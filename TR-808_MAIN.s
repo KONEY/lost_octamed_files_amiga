@@ -12,7 +12,6 @@ bwpl		EQU wd/16*2	; byte-width of 1 bitplane line (46)
 bwid		EQU bpls*bwpl	; byte-width of 1 pixel line (all bpls)
 TXT_FRMSKIP 	EQU 3
 ;*************
-TXT_SCROLL_PLANE	EQU bwpl*hg*3
 ;CLR.W	$100		; DEBUG | w 0 100 2
 ;********** Demo **********	; Demo-specific non-startup code below.
 Demo:				; a4=VBR, a6=Custom Registers Base addr
@@ -77,8 +76,6 @@ MainLoop:
 	BSR.W	__FILLANDSCROLLTXT
 
 	;*--- main loop end ---*
-
-	.QUITCODE:
 	; # CODE FOR BUTTON PRESS ##
 	BTST	#6,$BFE001
 	BNE.S	.DontShowRasterTime
@@ -86,12 +83,14 @@ MainLoop:
 	BNE.S	.DontShowRasterTime
 	MOVE.W	#1,LMBUTTON_STATUS
 	MOVE.W	#$F00,$DFF180	; show rastertime left down to $12c
-	ADD.W	#16,MED_SONG_POS
+	ADD.W	#8,MED_SONG_POS
 	.DontShowRasterTime:
 	BTST	#6,$BFE001
 	BEQ.S	.DontResetStatus
 	MOVE.W	#0,LMBUTTON_STATUS
 	.DontResetStatus:
+
+	.QUITCODE:
 	BTST	#2,$DFF016	; POTINP - RMB pressed?
 	BNE.W	MainLoop		; then loop
 	.quit:
@@ -227,12 +226,12 @@ __SET_SEQUENCER_LEDS:
 
 __FILLANDSCROLLTXT:
 	MOVE.W	FRAMESINDEX,D7
-	CMPI.W	#3,D7
+	CMPI.W	#TXT_FRMSKIP,D7	; TXT_FRMSKIP
 	BNE.W	.SKIP
-	LEA	TR808,A4	; Trick for double buffering ;)
+	LEA	TR808_END,A4
 	LEA	FONT,A5
 	LEA	TEXT,A3
-	ADD.W	#TXT_SCROLL_PLANE-(bwpl*9)+1,A4	; POSITIONING
+	SUB.W	#(bwpl*9)-1,A4	; POSITIONING
 	ADD.W	TEXTINDEX,A3
 	CMP.L	#_TEXT-1,A3	; Siamo arrivati all'ultima word della TAB?
 	BNE.S	.PROCEED
@@ -266,10 +265,10 @@ __FILLANDSCROLLTXT:
 
 	.SHIFTTEXT:
 	BSR.W	WaitBlitter
-	LEA	TR808,A2			; DOUBLE
-	LEA	TR808,A4			; BUFFERING ;)
-	ADD.W	#TXT_SCROLL_PLANE-bwpl,A2	; POSITIONING
-	ADD.W	#TXT_SCROLL_PLANE-bwpl,A4	; POSITIONING
+	LEA	TR808_END,A2
+	LEA	TR808_END,A4
+	SUB.W	#bwpl,A2			; POSITIONING
+	SUB.W	#bwpl,A4			; POSITIONING
 	MOVE.W	#$FFFF,BLTAFWM		; BLTAFWM lo spiegheremo dopo
 	MOVE.W	#$000F,BLTALWM		; BLTALWM lo spiegheremo dopo
 	MOVE.W	#%0010100111110000,BLTCON0	; BLTCON0 (usa A+D); con shift di un pixel
@@ -359,8 +358,9 @@ TEXT:		INCLUDE "textscroller.i"
 	SECTION "ChipData",DATA_C	;declared data that must be in chipmem
 
 TR808:		INCBIN "TR-808.raw"
+TR808_END:	DS.B bpls*8
 
-MED_MODULE:	INCBIN	"med/LOSTMEDFILES_MMD2.med"	;<<<<< MODULE NAME HERE!
+MED_MODULE:	INCBIN "med/LOSTMEDFILES_MMD2.med"	;<<<<< MODULE NAME HERE!
 
 SPRT_K:	
 	DC.B	$50	; Posizione verticale di inizio sprite (da $2c a $f2)
@@ -460,9 +460,9 @@ COPPER1:
 	DC.W $017C,$0000,$017E,$0000	; SPR7DATA
 
 	DC.W $FF01,$FF00		; horizontal position masked off
-	DC.W $018E,$0888		; SCROLLTEXT - $0D61
-	DC.W $0194,$0888		; SCROLLTEXT - $0D61
-	DC.W $018A,$0999		; SCROLLTEXT - $0D61
+	DC.W $01A6,$0888		; SCROLLTEXT - $0D61
+	;DC.W $0194,$0888		; SCROLLTEXT - $0D61
+	;DC.W $018A,$0999		; SCROLLTEXT - $0D61
 
 	DC.W $FFDF,$FFFE		; allow VPOS>$ff
 
@@ -474,6 +474,6 @@ COPPER1:
 ; *******************************************************************
 
 SCREEN1:		DS.B 0		; Define storage for buffer 1
-SCREEN2:		DS.B bwid*hg	; two buffers
+SCREEN2:		DS.B 0		; two buffers
 
 END

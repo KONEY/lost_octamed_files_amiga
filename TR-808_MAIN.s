@@ -10,20 +10,9 @@ hg		EQU 230
 bpls		EQU 5		; handy values:
 bwpl		EQU wd/16*2	; byte-width of 1 bitplane line (46)
 bwid		EQU bpls*bwpl	; byte-width of 1 pixel line (all bpls)
-TrigShift		EQU 7
-PXLSIDE		EQU 16
-Z_Shift		EQU PXLSIDE*5/2	; 5x5 obj
-LOGOSIDE		EQU 16*7
-LOGOBPL		EQU LOGOSIDE/16*2
-MARGINX		EQU wd/2
-MARGINY		EQU LOGOSIDE/2
-BLIT_POSITION	EQU (bwpl/2-LOGOBPL/2)+((LOGOSIDE+16)*40-2)
-BPL_BLIT_OFFSET	EQU BLIT_POSITION+bwpl*hg*4		; we precalculate :)
 TXT_FRMSKIP 	EQU 3
 ;*************
-MODSTART_POS 	EQU 1-1		; start music at position # !! MUST BE EVEN FOR 16BIT
-;*************
-
+TXT_SCROLL_PLANE	EQU bwpl*hg*3
 ;CLR.W	$100		; DEBUG | w 0 100 2
 ;********** Demo **********	; Demo-specific non-startup code below.
 Demo:				; a4=VBR, a6=Custom Registers Base addr
@@ -89,12 +78,20 @@ MainLoop:
 
 	;*--- main loop end ---*
 
-	ENDING_CODE:
+	.QUITCODE:
+	; # CODE FOR BUTTON PRESS ##
 	BTST	#6,$BFE001
-	BEQ.S	.quit		; then loop
-	;BNE.S	.DontShowRasterTime
-	;MOVE.W	#$0FF,$DFF196	; show rastertime left down to $12c
-	;.DontShowRasterTime:
+	BNE.S	.DontShowRasterTime
+	TST.W	LMBUTTON_STATUS
+	BNE.S	.DontShowRasterTime
+	MOVE.W	#1,LMBUTTON_STATUS
+	MOVE.W	#$F00,$DFF180	; show rastertime left down to $12c
+	ADD.W	#16,MED_SONG_POS
+	.DontShowRasterTime:
+	BTST	#6,$BFE001
+	BEQ.S	.DontResetStatus
+	MOVE.W	#0,LMBUTTON_STATUS
+	.DontResetStatus:
 	BTST	#2,$DFF016	; POTINP - RMB pressed?
 	BNE.W	MainLoop		; then loop
 	.quit:
@@ -232,10 +229,10 @@ __FILLANDSCROLLTXT:
 	MOVE.W	FRAMESINDEX,D7
 	CMPI.W	#3,D7
 	BNE.W	.SKIP
-	MOVEM.L	ViewBuffer,A4	; Trick for double buffering ;)
+	LEA	TR808,A4	; Trick for double buffering ;)
 	LEA	FONT,A5
 	LEA	TEXT,A3
-	ADD.W	#bwpl*(hg-9)+1,A4	; POSITIONING
+	ADD.W	#TXT_SCROLL_PLANE-(bwpl*9)+1,A4	; POSITIONING
 	ADD.W	TEXTINDEX,A3
 	CMP.L	#_TEXT-1,A3	; Siamo arrivati all'ultima word della TAB?
 	BNE.S	.PROCEED
@@ -269,19 +266,19 @@ __FILLANDSCROLLTXT:
 
 	.SHIFTTEXT:
 	BSR.W	WaitBlitter
-	MOVEM.L	ViewBuffer,A2	; DOUBLE
-	MOVE.L	DrawBuffer,A4	; BUFFERING ;)
-	ADD.W	#bwpl*(hg-1),A2	; POSITIONING
-	ADD.W	#bwpl*(hg-1),A4	; POSITIONING
-	MOVE.W	#$FFFF,BLTAFWM	; BLTAFWM lo spiegheremo dopo
-	MOVE.W	#$000F,BLTALWM	; BLTALWM lo spiegheremo dopo
+	LEA	TR808,A2			; DOUBLE
+	LEA	TR808,A4			; BUFFERING ;)
+	ADD.W	#TXT_SCROLL_PLANE-bwpl,A2	; POSITIONING
+	ADD.W	#TXT_SCROLL_PLANE-bwpl,A4	; POSITIONING
+	MOVE.W	#$FFFF,BLTAFWM		; BLTAFWM lo spiegheremo dopo
+	MOVE.W	#$000F,BLTALWM		; BLTALWM lo spiegheremo dopo
 	MOVE.W	#%0010100111110000,BLTCON0	; BLTCON0 (usa A+D); con shift di un pixel
 	MOVE.W	#%0000000000000010,BLTCON1	; BLTCON1 BIT 12 DESC MODE
-	MOVE.W	#3,BLTAMOD	; BLTAMOD =0 perche` il rettangolo
-	MOVE.W	#3,BLTDMOD	; BLTDMOD 40-4=36 il rettangolo
-	MOVE.L	A2,BLTAPTH	; BLTAPT  (fisso alla figura sorgente)
+	MOVE.W	#0,BLTAMOD		; BLTAMOD =0 perche` il rettangolo
+	MOVE.W	#0,BLTDMOD		; BLTDMOD 40-4=36 il rettangolo
+	MOVE.L	A2,BLTAPTH		; BLTAPT  (fisso alla figura sorgente)
 	MOVE.L	A4,BLTDPTH
-	MOVE.W	#5*64+(wd-10)/16,BLTSIZE	; BLTSIZE (via al blitter !)
+	MOVE.W	#5*64+(wd)/16,BLTSIZE	; BLTSIZE (via al blitter !)
 	RTS
 
 __POINT_SPRITES:			; #### Point LOGO sprites
@@ -334,11 +331,6 @@ __POINT_SPRITES:			; #### Point LOGO sprites
 	MOVE.W	D0,2(A1)
 	RTS
 
-
-
-
-
-
 ;********** Fastmem Data **********
 SPRITE_Y:		DC.W 0	; qui viene memorizzata la Y dello sprite
 SPRITE_X:		DC.W 0	; qui viene memorizzata la X dello sprite
@@ -353,19 +345,11 @@ SEQ_POS_ON:	DC.B $00,$51,$5C,$65,$00,$7A,$84,$8E,$00,$A3,$AD,$B8,$00,$CD,$D8,$E2
 SEQ_POS_BIT:	DC.B $1,$1,$0,$1,$0,$0,$1,$1,$0,$0,$1,$0,$1,$0,$1,$1
 SEQ_POS_OFF:	DC.B $47,$00,$00,$00,$70,$00,$00,$00,$99,$00,$00,$00,$C2,$00,$00,$00
 
-DrawBuffer:	DC.L SCREEN2		; pointers to buffers
-ViewBuffer:	DC.L SCREEN1		; to be swapped
+DrawBuffer:	DC.L TR808		; pointers to buffers
+ViewBuffer:	DC.L TR808		; to be swapped
 
 FONT:		DC.L 0,0			; SPACE CHAR
 		INCBIN "cosmicalien_font.raw",0
-		EVEN
-
-END_TEXT:	DC.B "THANKS FOR EXECUTING MECHMICROBES BY KONEY!",10
-		DC.B "YOU REACHED BLOCK "
-		TXT_POS: DC.B "XX"
-		DC.B " FROM A SEQUENCE OF 76. ",10
-		DC.B "VISIT WWW.KONEY.ORG FOR MORE TECHNO "
-		DC.B "AND HARDCORE AMIGA STUFF!",10
 		EVEN
 
 TEXT:		INCLUDE "textscroller.i"
@@ -376,7 +360,7 @@ TEXT:		INCLUDE "textscroller.i"
 
 TR808:		INCBIN "TR-808.raw"
 
-MED_MODULE:	INCBIN	"med/LOSTMEDFILES_MMD1.med"	;<<<<< MODULE NAME HERE!
+MED_MODULE:	INCBIN	"med/LOSTMEDFILES_MMD2.med"	;<<<<< MODULE NAME HERE!
 
 SPRT_K:	
 	DC.B	$50	; Posizione verticale di inizio sprite (da $2c a $f2)
@@ -475,8 +459,10 @@ COPPER1:
 	DC.W $0174,$0000,$0176,$0000	; SPR6DATA
 	DC.W $017C,$0000,$017E,$0000	; SPR7DATA
 
-	;DC.W $FF01,$FF00		; horizontal position masked off
-	;DC.W $018E,$0BBB		; SCROLLTEXT - $0D61
+	DC.W $FF01,$FF00		; horizontal position masked off
+	DC.W $018E,$0888		; SCROLLTEXT - $0D61
+	DC.W $0194,$0888		; SCROLLTEXT - $0D61
+	DC.W $018A,$0999		; SCROLLTEXT - $0D61
 
 	DC.W $FFDF,$FFFE		; allow VPOS>$ff
 

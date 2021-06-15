@@ -36,6 +36,7 @@ Demo:				; a4=VBR, a6=Custom Registers Base addr
 	BSR.W	PokePtrs
 
 	; #### CPU INTENSIVE TASKS BEFORE STARTING MUSIC
+	BSR.W	__POPULATESPRITE
 	BSR.W	__POINT_SPRITES	; #### Point sprites
 	; #### CPU INTENSIVE TASKS BEFORE STARTING MUSIC
 
@@ -68,7 +69,7 @@ MainLoop:
 	BSR.W	LeggiMouse	; questa legge il mouse
 	MOVE.W	SPRITE_Y(PC),D0	; prepara i parametri per la routine
 	MOVE.W	SPRITE_X(PC),D1	; universale
-	LEA	SPRT_K,A1	; indirizzo sprite
+	MOVE.L	ACTUALFRAME,A1	; indirizzo sprite
 	MOVEQ	#16,D2		; altezza sprite
 	BSR.W	UniMuoviSprite	; chiama la routine universale
 
@@ -85,7 +86,10 @@ MainLoop:
 	MOVE.W	#1,LMBUTTON_STATUS
 	MOVE.W	#$F00,$DFF180	; show rastertime left down to $12c
 	ADD.W	#8,MED_SONG_POS
-	;ADD.W	#1,FRAMEINDEX
+	ADD.W	#4,FRAMEINDEX
+	LEA	FRAMETAB,A2
+	MOVE.W	FRAMEINDEX,D1
+	MOVE.L	(A2,D1.W),ACTUALFRAME	; sprite 0
 	BSR.W	__POINT_SPRITES	; #### Point sprites
 	.DontShowRasterTime:
 	BTST	#6,$BFE001
@@ -287,20 +291,64 @@ __FILLANDSCROLLTXT:
 	MOVE.W	#5*64+(wd+16)/16,BLTSIZE	; BLTSIZE (via al blitter !)
 	RTS
 
+__POPULATESPRITE:
+	LEA	FONT,A5
+	LEA	SPRT_1,A4
+	; ## TRANSFORM SONGPOS INTO ASCII TXT  ##
+	MOVE.W	#7,D5
+	ADDQ.W	#1,D5	; DONT SHOW 0 TO USER
+	CLR.L	D6
+	MOVE.W	D5,D6
+	DIVU.W	#$A,D6
+	SWAP	D6
+	MOVE.W	D6,D5
+	SWAP	D6
+	OR.B	#48,D6	; POINT TO CHAR 0
+	LSL.W	#8,D6
+	OR.B	#48,D5	; POINT TO CHAR 0
+	OR.W	D6,D5
+	MOVE.W	D5,D2
+	; ## TRANSFORM SONGPOS INTO ASCII TXT  ##
+	;MOVE.B	(A3),D2		; Prossimo carattere in d2
+	SUBI.B	#$20,D2		; TOGLI 32 AL VALORE ASCII DEL CARATTERE, IN
+	MULU.W	#8,D2		; MOLTIPLICA PER 8 IL NUMERO PRECEDENTE,
+	ADD.W	D2,A5
+	MOVEQ	#0,D6		; RESET D6
+	MOVE.B	#5-1,D6
+	.LOOP:
+	ADD.W	#8,A4		; POSITIONING
+	MOVE.B	(A5)+,(A4)+
+	MOVE.B	#%00000000,(A4)+	; WRAPS MORE NICELY?
+	ADD.W	#8,A4		; POSITIONING
+	MOVE.B	(A5)+,(A4)+
+	MOVE.B	#%00000000,(A4)+	; WRAPS MORE NICELY?
+	DBRA	D6,.LOOP
+	ADD.W	#8,A4		; POSITIONING
+	MOVE.B	#%00000000,(A4)	; WRAPS MORE NICELY?
+	RTS
+
 __POINT_SPRITES:			; #### Point LOGO sprites
 	LEA	Copper1\.SpritePointers,A1	; Puntatori in copperlist
 
-	;LEA	FRAMETAB,A2
-	;MOVE.W	FRAMEINDEX,D1
-	;MOVE.L	(A2,D1.W),D0	; sprite 0
-
-	MOVE.L	#SPRT_K,D0	; sprite 0
+	MOVE.L	#0,D0		; sprite 0
 	MOVE.W	D0,6(A1)
 	SWAP	D0
 	MOVE.W	D0,2(A1)
 
 	ADDQ.W	#8,A1
-	MOVE.L	#0,D0		; sprite 1
+	MOVE.L	ACTUALFRAME,D0	; sprite 1
+	MOVE.W	D0,6(A1)
+	SWAP	D0
+	MOVE.W	D0,2(A1)
+
+	ADDQ.W	#8,A1
+	MOVE.L	#LED_OFF,D0	; sprite 5
+	MOVE.W	D0,6(A1)
+	SWAP	D0
+	MOVE.W	D0,2(A1)
+
+	ADDQ.W	#8,A1
+	MOVE.L	#LED_ON,D0	; sprite 4
 	MOVE.W	D0,6(A1)
 	SWAP	D0
 	MOVE.W	D0,2(A1)
@@ -313,18 +361,6 @@ __POINT_SPRITES:			; #### Point LOGO sprites
 
 	ADDQ.W	#8,A1
 	MOVE.L	#0,D0		; sprite 3
-	MOVE.W	D0,6(A1)
-	SWAP	D0
-	MOVE.W	D0,2(A1)
-
-	ADDQ.W	#8,A1
-	MOVE.L	#LED_OFF,D0	; sprite 4
-	MOVE.W	D0,6(A1)
-	SWAP	D0
-	MOVE.W	D0,2(A1)
-
-	ADDQ.W	#8,A1
-	MOVE.L	#LED_ON,D0	; sprite 5
 	MOVE.W	D0,6(A1)
 	SWAP	D0
 	MOVE.W	D0,2(A1)
@@ -376,15 +412,6 @@ TR808_END:	DS.B bpls*8
 
 MED_MODULE:	INCBIN "med/LOSTMEDFILES_MMD2.med"	;<<<<< MODULE NAME HERE!
 
-SPRT_1:	
-	DC.W $0000,$0080
-	DC.W $E00E,$E00E,$E00E,$E00E,$E00E,$E00E
-	DC.W $E070,$E070,$E070,$E070,$E070,$E070
-	DC.W $FF80,$FF80,$FF80,$FF80,$FF80,$FF80
-	DC.W $FC70,$FC70,$FC70,$FC70,$FC70,$FC70
-	DC.W $FC0E,$FC0E,$FC0E,$FC0E,$FC0E,$FC0E
-	DC.W 0,0	; 2 word azzerate definiscono la fine dello sprite.
-
 SPRT_K:	
 	DC.W $0000,$0080
 	DC.W $E00E,$E00E,$E00E,$E00E,$E00E,$E00E
@@ -394,6 +421,17 @@ SPRT_K:
 	DC.W $FC0E,$FC0E,$FC0E,$FC0E,$FC0E,$FC0E
 	DC.W 0,0	; 2 word azzerate definiscono la fine dello sprite.
 
+SPRT_1:	
+	DC.W $0000,$0080
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W 0,0	; 2 word azzerate definiscono la fine dello sprite.
+
+	DC.L 0	; DUMMY
+
 LED_ON:
 	.VPOS:
 	DC.B $EF	; Posizione verticale di inizio sprite (da $2c a $f2)
@@ -402,8 +440,6 @@ LED_ON:
 	DC.B $F2	; $50+13=$5d	; posizione verticale di fine sprite
 	.CTRL:
 	DC.B $00
-	DC.W $E000,$E000,$E000,$E000,$E000,$E000
-	DC.W $E000,$E000,$E000,$E000,$E000,$E000
 	DC.W $E000,$E000,$E000,$E000,$E000,$E000
 	DC.W 0,0	; 2 word azzerate definiscono la fine dello sprite.
 
@@ -415,9 +451,7 @@ LED_OFF:
 	DC.B $F2	; $50+13=$5d	; posizione verticale di fine sprite
 	.CTRL:
 	DC.B $00
-	DC.W $E000,$E000,$E000,$E000,$E000,$E000
-	DC.W $E000,$E000,$E000,$E000,$E000,$E000
-	DC.W $E000,$E000,$E000,$E000,$E000,$E000
+	DC.W $E000,$0000,$E000,$0000,$E000,$0000
 	DC.W 0,0	; 2 word azzerate definiscono la fine dello sprite.
 
 FRAMETAB:
@@ -425,6 +459,8 @@ FRAMETAB:
 	DC.L SPRT_1
 
 FRAMEINDEX: DC.W 0
+
+ACTUALFRAME: DC.L SPRT_K
 
 COPPER1:
 	DC.W $1FC,0		; Slow fetch mode, remove if AGA demo.
@@ -468,9 +504,9 @@ COPPER1:
 	DC.W $0188,$0222,$018A,$0667,$018C,$0556,$018E,$0FFF
 	DC.W $0190,$0EEE,$0192,$0DDD,$0194,$0CA8,$0196,$0CCC
 	DC.W $0198,$0AAA,$019A,$0999,$019C,$0888,$019E,$0777
-	DC.W $01A0,$0666,$01A2,$0776,$01A4,$0878,$01A6,$0F00
-	DC.W $01A8,$0BBC,$01AA,$099A,$01AC,$0EE0,$01AE,$0AA0
-	DC.W $01B0,$0990,$01B2,$0620,$01B4,$0961,$01B6,$0A71
+	DC.W $01A0,$0666,$01A2,$0776,$01A4,$0878,$01A6,$0AA0
+	DC.W $01A8,$0BBC,$01AA,$0620,$01AC,$0EE0,$01AE,$0F00
+	DC.W $01B0,$0990,$01B2,$099A,$01B4,$0961,$01B6,$0A71
 	DC.W $01B8,$0E81,$01BA,$0B40,$01BC,$0943,$01BE,$0EEF
 
 	.Waits:

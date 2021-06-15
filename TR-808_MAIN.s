@@ -17,9 +17,9 @@ TXT_FRMSKIP 	EQU 3
 Demo:				; a4=VBR, a6=Custom Registers Base addr
 	;*--- init ---*
 	MOVE.L	#VBint,$6C(A4)
-	MOVE.W	#%1110000000100000,INTENA
+	;MOVE.W	#%1110000000100000,INTENA
 	;** SOMETHING INSIDE HERE IS NEEDED TO MAKE MOD PLAY! **
-	;move.w	#%1110000000000000,INTENA	; Master and lev6	; NO COPPER-IRQ!
+	MOVE.W	#%1110000000000000,INTENA	; Master and lev6	; NO COPPER-IRQ!
 	MOVE.W	#%1000011111100000,DMACON
 	;*--- clear screens ---*
 	;LEA	SCREEN1,A1
@@ -36,21 +36,20 @@ Demo:				; a4=VBR, a6=Custom Registers Base addr
 	BSR.W	PokePtrs
 
 	; #### CPU INTENSIVE TASKS BEFORE STARTING MUSIC
+	BSR.W	__POINT_SPRITES	; #### Point sprites
 	; #### CPU INTENSIVE TASKS BEFORE STARTING MUSIC
 
-	move.b	$DFF00A,MOUSE_Y
-	move.b	$DFF00B,MOUSE_X
-
-	BSR.W	__POINT_SPRITES	; #### Point sprites
-
+	MOVE.B	$DFF00A,MOUSE_Y
+	MOVE.B	$DFF00B,MOUSE_X
 	;CLR.W	$100		; DEBUG | w 0 100 2
 	; in photon's wrapper comment:;move.w d2,$9a(a6) ;INTENA
+
 	JSR	_startmusic
-	
+
 	MOVE.L	#COPPER1,COP1LC		; COP1LCH
 ;********************  main loop  ********************
 MainLoop:
-	move.w	#$12c,d0	;No buffering, so wait until raster
+	move.w	#$12c,d0		;No buffering, so wait until raster
 	bsr.w	WaitRaster	;is below the Display Window.
 	;*--- swap buffers ---*
 	movem.l	DrawBuffer(PC),a2-a3
@@ -72,7 +71,9 @@ MainLoop:
 	LEA	SPRT_K,A1	; indirizzo sprite
 	MOVEQ	#16,D2		; altezza sprite
 	BSR.W	UniMuoviSprite	; chiama la routine universale
-		
+
+	BSR.W	__SET_SEQUENCER_LEDS
+
 	BSR.W	__FILLANDSCROLLTXT
 
 	;*--- main loop end ---*
@@ -84,6 +85,8 @@ MainLoop:
 	MOVE.W	#1,LMBUTTON_STATUS
 	MOVE.W	#$F00,$DFF180	; show rastertime left down to $12c
 	ADD.W	#8,MED_SONG_POS
+	;ADD.W	#1,FRAMEINDEX
+	BSR.W	__POINT_SPRITES	; #### Point sprites
 	.DontShowRasterTime:
 	BTST	#6,$BFE001
 	BEQ.S	.DontResetStatus
@@ -145,9 +148,9 @@ LeggiMouse:
 	BRA.S	.Y_B_ok
 	.Y_T_ok:
 
-	CMPI.W	#hg-15,D0
+	CMPI.W	#hg-18,D0
 	BLO.S	.Y_B_ok
-	MOVE.W	#hg-15,SPRITE_Y
+	MOVE.W	#hg-18,SPRITE_Y
 	.Y_B_ok:
 
 	MOVE.B	$DFF00B,D1	; posizione orizzontale mouse
@@ -219,9 +222,13 @@ __SET_SEQUENCER_LEDS:
 	MOVE.B	(A0,D0.W),LED_ON\.HPOS
 	LEA	SEQ_POS_OFF,A0
 	MOVE.B	(A0,D0.W),LED_OFF\.HPOS
-	LEA	SEQ_POS_BIT,A0
-	MOVE.B	(A0,D0.W),LED_ON\.CTRL
-	MOVE.B	(A0,D0.W),LED_OFF\.CTRL
+	;LEA	SEQ_VPOS_ON,A0
+	;MOVE.B	(A0,D0.W),LED_ON\.VPOS
+	;LEA	SEQ_VPOS_OFF,A0
+	;MOVE.B	(A0,D0.W),LED_OFF\.VPOS
+	;LEA	SEQ_POS_BIT,A0
+	;MOVE.B	(A0,D0.W),LED_ON\.CTRL
+	;MOVE.B	(A0,D0.W),LED_OFF\.CTRL
 	RTS
 
 __FILLANDSCROLLTXT:
@@ -270,18 +277,23 @@ __FILLANDSCROLLTXT:
 	SUB.W	#bwpl,A2			; POSITIONING
 	SUB.W	#bwpl,A4			; POSITIONING
 	MOVE.W	#$FFFF,BLTAFWM		; BLTAFWM lo spiegheremo dopo
-	MOVE.W	#$000F,BLTALWM		; BLTALWM lo spiegheremo dopo
+	MOVE.W	#$FFFF,BLTALWM		; BLTALWM lo spiegheremo dopo
 	MOVE.W	#%0010100111110000,BLTCON0	; BLTCON0 (usa A+D); con shift di un pixel
 	MOVE.W	#%0000000000000010,BLTCON1	; BLTCON1 BIT 12 DESC MODE
 	MOVE.W	#0,BLTAMOD		; BLTAMOD =0 perche` il rettangolo
 	MOVE.W	#0,BLTDMOD		; BLTDMOD 40-4=36 il rettangolo
 	MOVE.L	A2,BLTAPTH		; BLTAPT  (fisso alla figura sorgente)
 	MOVE.L	A4,BLTDPTH
-	MOVE.W	#5*64+(wd)/16,BLTSIZE	; BLTSIZE (via al blitter !)
+	MOVE.W	#5*64+(wd+16)/16,BLTSIZE	; BLTSIZE (via al blitter !)
 	RTS
 
 __POINT_SPRITES:			; #### Point LOGO sprites
 	LEA	Copper1\.SpritePointers,A1	; Puntatori in copperlist
+
+	;LEA	FRAMETAB,A2
+	;MOVE.W	FRAMEINDEX,D1
+	;MOVE.L	(A2,D1.W),D0	; sprite 0
+
 	MOVE.L	#SPRT_K,D0	; sprite 0
 	MOVE.W	D0,6(A1)
 	SWAP	D0
@@ -306,25 +318,25 @@ __POINT_SPRITES:			; #### Point LOGO sprites
 	MOVE.W	D0,2(A1)
 
 	ADDQ.W	#8,A1
-	MOVE.L	#0,D0		; sprite 4
+	MOVE.L	#LED_OFF,D0	; sprite 4
 	MOVE.W	D0,6(A1)
 	SWAP	D0
 	MOVE.W	D0,2(A1)
 
 	ADDQ.W	#8,A1
-	MOVE.L	#0,D0		; sprite 5
+	MOVE.L	#LED_ON,D0	; sprite 5
 	MOVE.W	D0,6(A1)
 	SWAP	D0
 	MOVE.W	D0,2(A1)
 
 	ADDQ.W	#8,A1
-	MOVE.L	#LED_ON,D0	; sprite 6
+	MOVE.L	#0,D0		; sprite 6
 	MOVE.W	D0,6(A1)
 	SWAP	D0
 	MOVE.W	D0,2(A1)
 
 	ADDQ.W	#8,A1
-	MOVE.L	#LED_OFF,D0	; sprite 7
+	MOVE.L	#0,D0		; sprite 7
 	MOVE.W	D0,6(A1)
 	SWAP	D0
 	MOVE.W	D0,2(A1)
@@ -340,9 +352,11 @@ TEXTINDEX:	DC.W 0
 FRAMESINDEX:	DC.W 3
 END_TEXT_LEN:	DC.W 152
 
-SEQ_POS_ON:	DC.B $00,$51,$5C,$65,$00,$7A,$84,$8E,$00,$A3,$AD,$B8,$00,$CD,$D8,$E2
-SEQ_POS_BIT:	DC.B $1,$1,$0,$1,$0,$0,$1,$1,$0,$0,$1,$0,$1,$0,$1,$1
-SEQ_POS_OFF:	DC.B $47,$00,$00,$00,$70,$00,$00,$00,$99,$00,$00,$00,$C2,$00,$00,$00
+SEQ_POS_ON:	DC.B $00,$61,$69,$71,$00,$81,$89,$91,$00,$A1,$A9,$B1,$00,$C1,$C9,$D1
+;SEQ_POS_BIT:	DC.B $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
+SEQ_POS_OFF:	DC.B $59,$00,$00,$00,$79,$00,$00,$00,$99,$00,$00,$00,$B9,$00,$00,$00
+SEQ_VPOS_ON:	DC.B $FF,$EF,$EF,$EF,$FF,$EF,$EF,$EF,$FF,$EF,$EF,$EF,$FF,$EF,$EF,$EF
+SEQ_VPOS_OFF:	DC.B $EF,$FF,$FF,$FF,$EF,$FF,$FF,$FF,$EF,$FF,$FF,$FF,$EF,$FF,$FF,$FF
 
 DrawBuffer:	DC.L TR808		; pointers to buffers
 ViewBuffer:	DC.L TR808		; to be swapped
@@ -362,46 +376,55 @@ TR808_END:	DS.B bpls*8
 
 MED_MODULE:	INCBIN "med/LOSTMEDFILES_MMD2.med"	;<<<<< MODULE NAME HERE!
 
+SPRT_1:	
+	DC.W $0000,$0080
+	DC.W $E00E,$E00E,$E00E,$E00E,$E00E,$E00E
+	DC.W $E070,$E070,$E070,$E070,$E070,$E070
+	DC.W $FF80,$FF80,$FF80,$FF80,$FF80,$FF80
+	DC.W $FC70,$FC70,$FC70,$FC70,$FC70,$FC70
+	DC.W $FC0E,$FC0E,$FC0E,$FC0E,$FC0E,$FC0E
+	DC.W 0,0	; 2 word azzerate definiscono la fine dello sprite.
+
 SPRT_K:	
-	DC.B	$50	; Posizione verticale di inizio sprite (da $2c a $f2)
-	DC.B	$90	; Posizione orizzontale di inizio sprite $44
-	DC.B	$60	; $50+13=$5d	; posizione verticale di fine sprite
-	DC.B	$00
-	DC.W	$E00E,$E00E,$E00E,$E00E,$E00E,$E00E
-	DC.W	$E070,$E070,$E070,$E070,$E070,$E070
-	DC.W	$FF80,$FF80,$FF80,$FF80,$FF80,$FF80
-	DC.W	$FC70,$FC70,$FC70,$FC70,$FC70,$FC70
-	DC.W	$FC0E,$FC0E,$FC0E,$FC0E,$FC0E,$FC0E
-	DC.W	0,0	; 2 word azzerate definiscono la fine dello sprite.
+	DC.W $0000,$0080
+	DC.W $E00E,$E00E,$E00E,$E00E,$E00E,$E00E
+	DC.W $E070,$E070,$E070,$E070,$E070,$E070
+	DC.W $FF80,$FF80,$FF80,$FF80,$FF80,$FF80
+	DC.W $FC70,$FC70,$FC70,$FC70,$FC70,$FC70
+	DC.W $FC0E,$FC0E,$FC0E,$FC0E,$FC0E,$FC0E
+	DC.W 0,0	; 2 word azzerate definiscono la fine dello sprite.
 
 LED_ON:
 	.VPOS:
-	DC.B $90	; Posizione verticale di inizio sprite (da $2c a $f2)
+	DC.B $EF	; Posizione verticale di inizio sprite (da $2c a $f2)
 	.HPOS:
 	DC.B $47	; Posizione orizzontale di inizio sprite (da $40 a $d8)
-	DC.B $00	; $50+13=$5d	; posizione verticale di fine sprite
+	DC.B $F2	; $50+13=$5d	; posizione verticale di fine sprite
 	.CTRL:
 	DC.B $00
-	DC.W $0000,$0000,$0000,$0000,$0000,$0000
-	DC.W $0000,$0000,$0000,$0000,$0000,$0000
-	DC.W $0000,$0000,$0000,$0000,$0000,$0000
-	DC.W $0000,$0000,$0000,$0000,$0000,$0000
-	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $E000,$E000,$E000,$E000,$E000,$E000
+	DC.W $E000,$E000,$E000,$E000,$E000,$E000
+	DC.W $E000,$E000,$E000,$E000,$E000,$E000
 	DC.W 0,0	; 2 word azzerate definiscono la fine dello sprite.
+
 LED_OFF:	
 	.VPOS:
-	DC.B $90	; Posizione verticale di inizio sprite (da $2c a $f2)
+	DC.B $EF	; Posizione verticale di inizio sprite (da $2c a $f2)
 	.HPOS:
-	DC.B $00	; Posizione orizzontale di inizio sprite (da $40 a $d8)
-	DC.B $00	; $50+13=$5d	; posizione verticale di fine sprite
+	DC.B $49	; Posizione orizzontale di inizio sprite (da $40 a $d8)
+	DC.B $F2	; $50+13=$5d	; posizione verticale di fine sprite
 	.CTRL:
 	DC.B $00
-	DC.W $0000,$0000,$0000,$0000,$0000,$0000
-	DC.W $0000,$0000,$0000,$0000,$0000,$0000
-	DC.W $0000,$0000,$0000,$0000,$0000,$0000
-	DC.W $0000,$0000,$0000,$0000,$0000,$0000
-	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $E000,$E000,$E000,$E000,$E000,$E000
+	DC.W $E000,$E000,$E000,$E000,$E000,$E000
+	DC.W $E000,$E000,$E000,$E000,$E000,$E000
 	DC.W 0,0	; 2 word azzerate definiscono la fine dello sprite.
+
+FRAMETAB:
+	DC.L SPRT_K
+	DC.L SPRT_1
+
+FRAMEINDEX: DC.W 0
 
 COPPER1:
 	DC.W $1FC,0		; Slow fetch mode, remove if AGA demo.
@@ -445,26 +468,26 @@ COPPER1:
 	DC.W $0188,$0222,$018A,$0667,$018C,$0556,$018E,$0FFF
 	DC.W $0190,$0EEE,$0192,$0DDD,$0194,$0CA8,$0196,$0CCC
 	DC.W $0198,$0AAA,$019A,$0999,$019C,$0888,$019E,$0777
-	DC.W $01A0,$0666,$01A2,$0776,$01A4,$0878,$01A6,$0EEF
-	DC.W $01A8,$0BBC,$01AA,$099A,$01AC,$0620,$01AE,$0AA0
-	DC.W $01B0,$0990,$01B2,$0EE0,$01B4,$0961,$01B6,$0A71
-	DC.W $01B8,$0E81,$01BA,$0B40,$01BC,$0943,$01BE,$0F00
+	DC.W $01A0,$0666,$01A2,$0776,$01A4,$0878,$01A6,$0F00
+	DC.W $01A8,$0BBC,$01AA,$099A,$01AC,$0EE0,$01AE,$0AA0
+	DC.W $01B0,$0990,$01B2,$0620,$01B4,$0961,$01B6,$0A71
+	DC.W $01B8,$0E81,$01BA,$0B40,$01BC,$0943,$01BE,$0EEF
 
 	.Waits:
 	; SEQ_LEDs
-	DC.W $F801,$FF00			; horizontal position masked off
-	DC.W $0174,$FC00,$0176,$FC00	; SPR6DATA
-	DC.W $017C,$0000,$017E,$FC00	; SPR7DATA
-	DC.W $FA01,$FF00
-	DC.W $0174,$0000,$0176,$0000	; SPR6DATA
-	DC.W $017C,$0000,$017E,$0000	; SPR7DATA
-
-	DC.W $FF01,$FF00		; horizontal position masked off
-	DC.W $01A6,$0888		; SCROLLTEXT - $0D61
-	;DC.W $0194,$0888		; SCROLLTEXT - $0D61
-	;DC.W $018A,$0999		; SCROLLTEXT - $0D61
+	;DC.W $EF01,$FF00			; horizontal position masked off
+	;DC.W $0174,$E000,$0176,$E000	; SPR6DATA
+	;DC.W $017C,$0000,$017E,$E000	; SPR7DATA
+	;DC.W $F201,$FF00
+	;DC.W $0174,$0000,$0176,$0000	; SPR6DATA
+	;DC.W $017C,$0000,$017E,$0000	; SPR7DATA
 
 	DC.W $FFDF,$FFFE		; allow VPOS>$ff
+
+	DC.W $1001,$FF00		; horizontal position masked off
+	DC.W $01A6,$0888		; SCROLLTEXT - $0D61
+	DC.W $01A8,$0888		; SCROLLTEXT - $0D61
+	;DC.W $018A,$0999		; SCROLLTEXT - $0D61
 
 	DC.W $FFFF,$FFFE		; magic value to end copperlist_COPPER1:
 

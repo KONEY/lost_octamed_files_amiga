@@ -36,13 +36,14 @@ Demo:				; a4=VBR, a6=Custom Registers Base addr
 	BSR.W	PokePtrs
 
 	; #### CPU INTENSIVE TASKS BEFORE STARTING MUSIC
+	MOVE.W	#4,D3		; PARAMETERS
+	LEA	SPRT_1\.DATA,A4	; PARS
 	BSR.W	__POPULATESPRITE
 	BSR.W	__POINT_SPRITES	; #### Point sprites
 	; #### CPU INTENSIVE TASKS BEFORE STARTING MUSIC
 
 	MOVE.B	$DFF00A,MOUSE_Y
 	MOVE.B	$DFF00B,MOUSE_X
-	;CLR.W	$100		; DEBUG | w 0 100 2
 	; in photon's wrapper comment:;move.w d2,$9a(a6) ;INTENA
 
 	JSR	_startmusic
@@ -77,6 +78,10 @@ MainLoop:
 
 	BSR.W	__FILLANDSCROLLTXT
 
+	MOVE.W	MED_STEPSEQ_POS,D3 	; PARAMETERS
+	LEA	SPRT_1\.DATA,A4	; PARS
+	BSR.W	__POPULATESPRITE
+
 	;*--- main loop end ---*
 	; # CODE FOR BUTTON PRESS ##
 	BTST	#6,$BFE001
@@ -85,12 +90,18 @@ MainLoop:
 	BNE.S	.DontShowRasterTime
 	MOVE.W	#1,LMBUTTON_STATUS
 	MOVE.W	#$F00,$DFF180	; show rastertime left down to $12c
-	ADD.W	#8,MED_SONG_POS
+	; ## SONG POSITION ##
+	ADD.W	#2,KEYBLOCKS_INDEX
+	MOVE.W	KEYBLOCKS_INDEX,D1
+	LEA	KEYBLOCKS,A2
+	CLR.W	$100		; DEBUG | w 0 100 2
+	MOVE.W	(A2,D1.W),MED_SONG_POS
+	; ## SONG POSITION ##
 	ADD.W	#4,FRAMEINDEX
 	LEA	FRAMETAB,A2
 	MOVE.W	FRAMEINDEX,D1
-	MOVE.L	(A2,D1.W),ACTUALFRAME	; sprite 0
-	BSR.W	__POINT_SPRITES	; #### Point sprites
+	;MOVE.L	(A2,D1.W),ACTUALFRAME	; sprite 0
+	;BSR.W	__POINT_SPRITES	; #### Point sprites
 	.DontShowRasterTime:
 	BTST	#6,$BFE001
 	BEQ.S	.DontResetStatus
@@ -137,7 +148,6 @@ VBint:				; Blank template VERTB interrupt
 LeggiMouse:
 	MOVE.B	$DFF00A,D1	; JOY0DAT posizione verticale mouse
 	MOVE.B	D1,D0		; copia in d0
-	CLR.W	$100		; DEBUG | w 0 100 2
 	SUB.B	MOUSE_Y(PC),D0	; sottrai vecchia posizione mouse
 	BEQ.S	.no_vert		; se la differenza = 0, il mouse e` fermo
 	EXT.W	D0		; trasforma il byte in word
@@ -292,21 +302,39 @@ __FILLANDSCROLLTXT:
 	RTS
 
 __POPULATESPRITE:
-	LEA	FONT,A5
-	ADD.W	#2,A5
-	LEA	SPRT_1\.DATA,A4
-	; ## TRANSFORM SONGPOS INTO ASCII TXT  ##
-	MOVE.W	#0,D5		; VALUE
-	ADD.W	#16,D5
-	MULU.W	#8,D5
-	ADD.W	D5,A5
+	LEA	FONT,A1
+	ADD.W	#2,A1
+	ADD.W	#16*8,A1
+	MOVE.L	A1,A2
+	; ## TRANSFORM SONGPOS INTO ASCII TXT ##
+
+	MOVE.W	#0,D1
+	MOVE.W	D3,D2
+	CMPI.W	#10,D3
+	BLO.S	.oneDigit
+	SUB.W	#10,D2
+	MOVE.W	#1,D1
+	.oneDigit:
+	MULU.W	#8,D1
+	MULU.W	#8,D2
+
+	ADD.W	D1,A1
+	ADD.W	D2,A2
+
 	MOVEQ	#0,D6		; RESET D6
 	MOVE.B	#6-1,D6
 	.LOOP:
-	MOVE.B	(A5),(A4)+
-	MOVE.B	#%00000000,(A4)+	; WRAPS MORE NICELY?
-	MOVE.B	(A5)+,(A4)+
-	MOVE.B	#%00000000,(A4)+	; WRAPS MORE NICELY?
+	MOVE.L	#0,D3
+	MOVE.B	(A1),D3
+	LSL.L	#6,D3
+	MOVE.B	(A2),D3
+	LSL.L	#2,D3
+	LSL.L	#8,D3
+	MOVE.B	(A1)+,D3
+	LSL.L	#6,D3
+	MOVE.B	(A2)+,D3
+	LSL.L	#2,D3
+	MOVE.L	D3,(A4)+
 	DBRA	D6,.LOOP
 	RTS
 
@@ -362,14 +390,13 @@ __POINT_SPRITES:			; #### Point LOGO sprites
 	RTS
 
 ;********** Fastmem Data **********
-SPRITE_Y:		DC.W 0	; qui viene memorizzata la Y dello sprite
-SPRITE_X:		DC.W 0	; qui viene memorizzata la X dello sprite
-MOUSE_Y:		DC.B 0	; qui viene memorizzata la Y del mouse
-MOUSE_X:		DC.B 0	; qui viene memorizzata la X del mouse
+SPRITE_Y:		DC.W 0		; qui viene memorizzata la Y dello sprite
+SPRITE_X:		DC.W 0		; qui viene memorizzata la X dello sprite
+MOUSE_Y:		DC.B 0		; qui viene memorizzata la Y del mouse
+MOUSE_X:		DC.B 0		; qui viene memorizzata la X del mouse
 LMBUTTON_STATUS:	DC.W 0
 TEXTINDEX:	DC.W 0
 FRAMESINDEX:	DC.W 3
-END_TEXT_LEN:	DC.W 152
 
 SEQ_POS_ON:	DC.B $00,$61,$69,$71,$00,$81,$89,$91,$00,$A1,$A9,$B1,$00,$C1,$C9,$D1
 ;SEQ_POS_BIT:	DC.B $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
@@ -377,10 +404,10 @@ SEQ_POS_OFF:	DC.B $59,$00,$00,$00,$79,$00,$00,$00,$99,$00,$00,$00,$B9,$00,$00,$0
 SEQ_VPOS_ON:	DC.B $FF,$EF,$EF,$EF,$FF,$EF,$EF,$EF,$FF,$EF,$EF,$EF,$FF,$EF,$EF,$EF
 SEQ_VPOS_OFF:	DC.B $EF,$FF,$FF,$FF,$EF,$FF,$FF,$FF,$EF,$FF,$FF,$FF,$EF,$FF,$FF,$FF
 
-DrawBuffer:	DC.L TR808		; pointers to buffers
-ViewBuffer:	DC.L TR808		; to be swapped
+DrawBuffer:	DC.L TR808	; pointers to buffers
+ViewBuffer:	DC.L TR808	; to be swapped
 
-FONT:		DC.L 0,0			; SPACE CHAR
+FONT:		DC.L 0,0		; SPACE CHAR
 		INCBIN "cosmicalien_font.raw",0
 		EVEN
 
@@ -393,7 +420,7 @@ TEXT:		INCLUDE "textscroller.i"
 TR808:		INCBIN "TR-808.raw"
 TR808_END:	DS.B bpls*8
 
-MED_MODULE:	INCBIN "med/LOSTMEDFILES_MMD2.med"	;<<<<< MODULE NAME HERE!
+MED_MODULE:	INCBIN "med/LOST_OCTAMED_FILES_1.med"	;<<<<< MODULE NAME HERE!
 
 SPRT_K:	
 	DC.W $0000,$0080
@@ -442,9 +469,12 @@ FRAMETAB:
 	DC.L SPRT_K
 	DC.L SPRT_1
 
-FRAMEINDEX: DC.W 0
+FRAMEINDEX:	DC.W 0
 
-ACTUALFRAME: DC.L SPRT_K
+ACTUALFRAME:	DC.L SPRT_1
+
+KEYBLOCKS:	DC.W 0,35,58,105,124,153,178,225
+KEYBLOCKS_INDEX:	DC.W 0
 
 COPPER1:
 	DC.W $1FC,0		; Slow fetch mode, remove if AGA demo.
@@ -513,7 +543,7 @@ COPPER1:
 
 
 ; *******************************************************************
-	SECTION	ChipBuffers,BSS_C	;BSS doesn't count toward exe size
+	SECTION	ChipBuffers,BSS_C	; BSS doesn't count toward exe size
 ; *******************************************************************
 
 SCREEN1:		DS.B 0		; Define storage for buffer 1

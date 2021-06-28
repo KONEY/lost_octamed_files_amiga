@@ -36,8 +36,11 @@ Demo:				; a4=VBR, a6=Custom Registers Base addr
 	BSR.W	PokePtrs
 
 	; #### CPU INTENSIVE TASKS BEFORE STARTING MUSIC
-	MOVE.W	#4,D3		; PARAMETERS
-	LEA	SPRT_1\.DATA,A4	; PARS
+	MOVE.W	#0,D3		; PARAMETERS
+	LEA	SPRT_A\.DATA,A4	; PARS
+	BSR.W	__POPULATESPRITE
+	MOVE.L	#2,D3		; PARAMETERS
+	LEA	SPRT_N\.DATA,A4	; PARS
 	BSR.W	__POPULATESPRITE
 	BSR.W	__POINT_SPRITES	; #### Point sprites
 	; #### CPU INTENSIVE TASKS BEFORE STARTING MUSIC
@@ -67,23 +70,73 @@ MainLoop:
 	move.l	a2,a1
 	MOVE.L	#TR808,DrawBuffer
 	; do stuff here :)
-	BSR.W	LeggiMouse	; questa legge il mouse
-	MOVE.W	SPRITE_Y(PC),D0	; prepara i parametri per la routine
-	MOVE.W	SPRITE_X(PC),D1	; universale
-	MOVE.L	ACTUALFRAME,A1	; indirizzo sprite
+	BSR.W	__SET_SEQUENCER_LEDS
+	BSR.W	__FILLANDSCROLLTXT
+
+	;MOVE.W	MED_STEPSEQ_POS,D3 	; PARAMETERS
+	;LEA	SPRT_1\.DATA,A4	; PARS
+	;BSR.W	__POPULATESPRITE
+
+	; # KEYBLOCK CHANGES #
+	TST.W	COUNTDOWN
+	BNE.W	.Skip
+
+	TST.W	MED_BLOCK_LINE
+	BNE.S	.Skip
+
+	;CLR.W	$100			; DEBUG | w 0 100 2
+	MOVE.L	KEYBLOCKS_INDEX,D3
+	ADD.W	#2,D3
+	LEA	KEYBLOCKS,A2
+	MOVE.W	(A2,D3.W),D1
+	MOVE.W	MED_SONG_POS,D2
+	CMP.W	D1,D2
+	BNE.S	.Skip
+
+	MOVE.L	D3,KEYBLOCKS_INDEX	; update index
+	MOVE.W	#30*6,COUNTDOWN
+	MOVE.L	#SPRT_N,ACTUALSPRITE	; sprite 0
+	BSR.W	__POINT_SPRITES		; #### Point sprites
+	LEA	SPRT_A\.DATA,A4		; PARS
+	BSR.W	__POPULATESPRITE
+	MOVE.W	#$F0F,$DFF180		; show rastertime left down to $12c
+	.Skip:
+
+	TST.W	COUNTDOWN
+	BEQ.S	.dontDecrease
+	SUB.W	#1,COUNTDOWN
+	.dontDecrease:
+
+	MOVE.W	COUNTDOWN,D5
+	CMP.W	#1,D5
+	BNE.S	.dontReset
+	MOVE.W	#0,COUNTDOWN
+	MOVE.L	#SPRT_K,ACTUALSPRITE	; sprite 0
+
+	MOVE.L	#SPRT_A,A1	; indirizzo sprite
+	MOVE.W	#$FF,D0
+	MOVE.W	#$FF,D1
 	MOVEQ	#16,D2		; altezza sprite
 	BSR.W	UniMuoviSprite	; chiama la routine universale
 
-	BSR.W	__SET_SEQUENCER_LEDS
-
-	BSR.W	__FILLANDSCROLLTXT
-
-	MOVE.W	MED_STEPSEQ_POS,D3 	; PARAMETERS
-	LEA	SPRT_1\.DATA,A4	; PARS
+	BSR.W	__POINT_SPRITES	; #### Point sprites
+	MOVE.L	KEYBLOCKS_INDEX,D3
+	ADD.W	#2,D3
+	LEA	SPRT_N\.DATA,A4	; PARS
 	BSR.W	__POPULATESPRITE
+	.dontReset:
+
+	BSR.W	LeggiMouse	; questa legge il mouse
+	MOVE.W	SPRITE_Y(PC),D0	; prepara i parametri per la routine
+	MOVE.W	SPRITE_X(PC),D1	; universale
+	MOVE.L	ACTUALSPRITE,A1	; indirizzo sprite
+	MOVEQ	#16,D2		; altezza sprite
+	BSR.W	UniMuoviSprite	; chiama la routine universale
 
 	;*--- main loop end ---*
 	; # CODE FOR BUTTON PRESS ##
+	TST.W	COUNTDOWN
+	BNE.S	.DontShowRasterTime
 	BTST	#6,$BFE001
 	BNE.S	.DontShowRasterTime
 	TST.W	LMBUTTON_STATUS
@@ -91,17 +144,17 @@ MainLoop:
 	MOVE.W	#1,LMBUTTON_STATUS
 	MOVE.W	#$F00,$DFF180	; show rastertime left down to $12c
 	; ## SONG POSITION ##
-	ADD.W	#2,KEYBLOCKS_INDEX
-	MOVE.W	KEYBLOCKS_INDEX,D1
+	MOVE.L	KEYBLOCKS_INDEX,D3
+	ADD.W	#2,D3
 	LEA	KEYBLOCKS,A2
-	CLR.W	$100		; DEBUG | w 0 100 2
-	MOVE.W	(A2,D1.W),MED_SONG_POS
+	MOVE.W	(A2,D3.W),MED_SONG_POS
 	; ## SONG POSITION ##
-	ADD.W	#4,FRAMEINDEX
-	LEA	FRAMETAB,A2
-	MOVE.W	FRAMEINDEX,D1
-	;MOVE.L	(A2,D1.W),ACTUALFRAME	; sprite 0
-	;BSR.W	__POINT_SPRITES	; #### Point sprites
+	MOVE.L	#SPRT_A,ACTUALSPRITE	; sprite 0
+	BSR.W	__POINT_SPRITES	; #### Point sprites
+
+	LEA	SPRT_N\.DATA,A4	; PARS
+	BSR.W	__POPULATESPRITE
+
 	.DontShowRasterTime:
 	BTST	#6,$BFE001
 	BEQ.S	.DontResetStatus
@@ -307,7 +360,7 @@ __POPULATESPRITE:
 	ADD.W	#16*8,A1
 	MOVE.L	A1,A2
 	; ## TRANSFORM SONGPOS INTO ASCII TXT ##
-
+	DIVU.W	#2,D3
 	MOVE.W	#0,D1
 	MOVE.W	D3,D2
 	CMPI.W	#10,D3
@@ -347,7 +400,7 @@ __POINT_SPRITES:			; #### Point LOGO sprites
 	MOVE.W	D0,2(A1)
 
 	ADDQ.W	#8,A1
-	MOVE.L	ACTUALFRAME,D0	; sprite 1
+	MOVE.L	ACTUALSPRITE,D0	; sprite 1
 	MOVE.W	D0,6(A1)
 	SWAP	D0
 	MOVE.W	D0,2(A1)
@@ -397,12 +450,22 @@ MOUSE_X:		DC.B 0		; qui viene memorizzata la X del mouse
 LMBUTTON_STATUS:	DC.W 0
 TEXTINDEX:	DC.W 0
 FRAMESINDEX:	DC.W 3
+COUNTDOWN:	DC.W 0
+SKIP_TRIGGERED:	DC.W 0
 
 SEQ_POS_ON:	DC.B $00,$61,$69,$71,$00,$81,$89,$91,$00,$A1,$A9,$B1,$00,$C1,$C9,$D1
 ;SEQ_POS_BIT:	DC.B $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
 SEQ_POS_OFF:	DC.B $59,$00,$00,$00,$79,$00,$00,$00,$99,$00,$00,$00,$B9,$00,$00,$00
 SEQ_VPOS_ON:	DC.B $FF,$EF,$EF,$EF,$FF,$EF,$EF,$EF,$FF,$EF,$EF,$EF,$FF,$EF,$EF,$EF
 SEQ_VPOS_OFF:	DC.B $EF,$FF,$FF,$FF,$EF,$FF,$FF,$FF,$EF,$FF,$FF,$FF,$EF,$FF,$FF,$FF
+
+FRAMEINDEX:	DC.W 0
+
+ACTUALSPRITE:	DC.L SPRT_K
+
+KEYBLOCKS:	DC.W 0,15,35,58,105,124,153,178,225
+;KEYBLOCKS:	DC.W 0,2,40,6,8,10,12,14,16,18
+KEYBLOCKS_INDEX:	DC.L 0
 
 DrawBuffer:	DC.L TR808	; pointers to buffers
 ViewBuffer:	DC.L TR808	; to be swapped
@@ -431,7 +494,7 @@ SPRT_K:
 	DC.W $FC0E,$FC0E,$FC0E,$FC0E,$FC0E,$FC0E
 	DC.W 0,0	; 2 word azzerate definiscono la fine dello sprite.
 
-SPRT_1:	
+SPRT_A:	
 	DC.W $0000,$0080
 	.DATA:
 	DC.W $0000,$0000,$0000,$0000,$0000,$0000
@@ -440,7 +503,17 @@ SPRT_1:
 	DC.W $0000,$0000,$0000,$0000,$0000,$0000
 	DC.W $0000,$0000,$0000,$0000,$0000,$0000
 	DC.W 0,0	; 2 word azzerate definiscono la fine dello sprite.
+	DC.L 0	; DUMMY
 
+SPRT_N:	
+	DC.W $0000,$0080
+	.DATA:
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W 0,0	; 2 word azzerate definiscono la fine dello sprite.
 	DC.L 0	; DUMMY
 
 LED_ON:
@@ -464,17 +537,6 @@ LED_OFF:
 	DC.B $00
 	DC.W $E000,$0000,$E000,$0000,$E000,$0000
 	DC.W 0,0	; 2 word azzerate definiscono la fine dello sprite.
-
-FRAMETAB:
-	DC.L SPRT_K
-	DC.L SPRT_1
-
-FRAMEINDEX:	DC.W 0
-
-ACTUALFRAME:	DC.L SPRT_1
-
-KEYBLOCKS:	DC.W 0,35,58,105,124,153,178,225
-KEYBLOCKS_INDEX:	DC.W 0
 
 COPPER1:
 	DC.W $1FC,0		; Slow fetch mode, remove if AGA demo.

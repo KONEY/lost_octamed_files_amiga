@@ -39,152 +39,196 @@
 	IFNE	EASY
 		XDEF	_startmusic,_endmusic
 
-_startmusic:	lea	MED_MODULE,a2
-		bsr.s	_RelocModule
-		bsr.w	_InitPlayer
-		lea	MED_MODULE,a0
-		bra.w	_PlayModule
+_startmusic:	
+	lea	MED_MODULE,a2
+	bsr.s	_RelocModule
+	bsr.w	_InitPlayer
+	lea	MED_MODULE,a0
+	bra.w	_PlayModule
 
 _endmusic:	bra.w	_RemPlayer
 ; ***** The relocation routine *****
-reloci:		move.l	24(a2),d0
-		beq.s	xloci
-		movea.l	d0,a0
-		moveq	#0,d0
-		move.b	msng_numsamples(a1),d0
-		subq.b	#1,d0
-relocs:		bsr.s	relocentr
-		move.l	-4(a0),d3
-		beq.s	nosyn
-		move.l	d3,a3
-		tst.w	4(a3)
-		bpl.s	nosyn
-		move.w	20(a3),d2
-		lea	278(a3),a3
-		subq.w	#1,d2
-relsyn:		add.l	d3,(a3)+
-		dbf	d2,relsyn
-nosyn:		dbf	d0,relocs
-xloci:		rts
-norel:		addq.l	#4,a0
-		rts
-relocentr:	tst.l	(a0)
-		beq.s	norel
-		add.l	d1,(a0)+
-		rts
-_RelocModule:	movem.l	a2-a4/d2-d4,-(sp)
-		move.l	a2,d1
-		bsr.s	relocp
-		movea.l	mmd_songinfo(a2),a1
-		bsr.s	reloci
-		move.b	mmd_songsleft(a2),d4
-rel_lp:		bsr.s	relocb
-		cmp.b	#'2',3(a2)
-		bne.s	norelmmd2
-		bsr.w	relocmmd2sng
-norelmmd2:	move.l	mmd_expdata(a2),d0
-		beq.s	rel_ex
-		move.l	d0,a0
-		bsr.s	relocentr
-		bsr.s	relocentr
-		addq.l	#4,a0
-		bsr.s	relocentr
-		addq.l	#4,a0
-		bsr.s	relocentr
-		addq.l	#8,a0
-		bsr.s	relocentr
-		addq.l	#4,a0
-		bsr.s	relocentr
-		bsr.s	relocentr
-		addq.l	#4,a0
-		bsr.s	relocentr
-		bsr.s	relocmdd
-		subq.b	#1,d4
-		bcs.s	rel_ex
-		move.l	d0,a0
-		move.l	(a0),d0
-		beq.s	rel_ex
-		move.l	d0,a2
-		bsr.s	relocp
-		movea.l 8(a2),a1
-		bra.s	rel_lp
-rel_ex:		movem.l	(sp)+,d2-d4/a2-a4
-		rts
-relocp:		lea	mmd_songinfo(a2),a0
-		bsr.s	relocentr
-		addq.l	#4,a0
-		bsr.s	relocentr
-		addq.l	#4,a0
-		bsr.s	relocentr
-		addq.l	#4,a0
-		bra.s	relocentr
-relocb:		move.l	mmd_blockarr(a2),d0
-		beq.s	xlocb
-		movea.l	d0,a0
-		move.w  msng_numblocks(a1),d0
-		subq.b  #1,d0
-rebl:		bsr	relocentr
-		dbf     d0,rebl
-		cmp.b	#'T',3(a2)
-		beq.s	xlocb
-		cmp.b	#'1',3(a2)
-		bge.s	relocbi
-xlocb:		rts
-relocmdd:		move.l	d0,-(sp)
-		tst.l	-(a0)
-		beq.s	xlocmdd
-		movea.l	(a0),a0
-		move.w	(a0),d0
-		addq.l	#8,a0
-mddloop:		beq.s	xlocmdd
-		bsr	relocentr
-		bsr.s	relocdmp
-		subq.w	#1,d0
-		bra.s	mddloop
-xlocmdd:		move.l	(sp)+,d0
-		rts
-relocdmp:		move.l	-4(a0),d3
-		beq.s	xlocdmp
-		exg.l	a0,d3
-		addq.l	#4,a0
-		bsr	relocentr
-		move.l	d3,a0
-xlocdmp:		rts
-relocbi:		move.w	msng_numblocks(a1),d0
-		move.l	a0,a3
-biloop:		subq.w	#1,d0
-		bmi.s	xlocdmp
-		move.l	-(a3),a0
-		addq.l	#4,a0
-		bsr	relocentr
-		tst.l	-(a0)
-		beq.s	biloop
-		move.l	(a0),a0
-		bsr	relocentr
-		bsr	relocentr
-		addq.l	#4,a0
-		bsr	relocentr
-		tst.l	-(a0)
-		bne.s	relocpgtbl
-		bra.s	biloop
-relocmmd2sng:	move.l	mmd_songinfo(a2),a0
-		lea	msng_pseqs(a0),a0
-		bsr	relocentr
-		bsr	relocentr
-		bsr	relocentr
-		move.w	2(a0),d0
-		move.l	-12(a0),a0
-		subq.w	#1,d0
-psqtblloop:	bsr	relocentr
-		dbf	d0,psqtblloop
-		rts
-relocpgtbl:	movea.l	(a0),a4
-		move.w	(a4),d2
-		subq.w	#1,d2
-		lea	4(a4),a0
-pgtblloop:		bsr	relocentr
-		dbf	d2,pgtblloop
-		bra	biloop
+; NOTE: The module pointer is passed in register A0 (FALSE). Use stubs with C.
+reloci:					; ** RELOC SAMPLES **
+	move.l	mmd_smplarr(a2),d0
+	beq.s	.xloci
+	movea.l	d0,a0
+	moveq	#0,d0
+	move.b	msng_numsamples(a1),d0	; number of samples
+	subq.b	#1,d0
+	move.l	(a0),d3			; 1rst sample ptr
+	MOVE.L	#_SAMPLES,D7		; NEW POINTER
+	SUB.L	D3,D7			; NEW OFFSET
+	.relocs:
+	bsr.s	relocSample
+	move.l	-4(a0),d3		; sample ptr
+	beq.s	.nosyn
+	move.l	d3,a3
+	tst.w	4(a3)
+	bpl.s	.nosyn			; type >= 0
+	move.w	20(a3),d2		; number of waveforms
+	lea	278(a3),a3		; ptr to wf ptrs
+	subq.w	#1,d2
+	.relsyn:
+	add.l	d3,(a3)+
+	dbf	d2,.relsyn
+	.nosyn:
+	dbf	d0,.relocs
+	.xloci:
+	rts
+
+relocSample:	
+	tst.l	(a0)
+	beq.s	.norel
+	add.l	D7,(a0)+
+	rts
+	.norel:
+	addq.l	#4,a0
+	rts
+
+relocentr:	
+	tst.l	(a0)
+	beq.s	.norel
+	add.l	d1,(a0)+
+	rts
+	.norel:
+	addq.l	#4,a0
+	rts
+
+_RelocModule:	
+	movem.l	a2-a4/d2-d4,-(sp)
+	move.l	a2,d1			; d1 = ptr to start of module
+	bsr.s	.relocp
+	movea.l	mmd_songinfo(a2),a1
+	bsr.s	reloci
+	move.b	mmd_songsleft(a2),d4
+	.rel_lp:
+	bsr.s	.relocb
+	cmp.b	#'2',3(a2)		; MMD2?
+	bne.s	.norelmmd2
+	bsr.w	.relocmmd2sng
+	.norelmmd2:
+	move.l	mmd_expdata(a2),d0
+	beq.s	.rel_ex
+	move.l	d0,a0
+	bsr.s	relocentr
+	bsr.s	relocentr
+	addq.l	#4,a0
+	; We reloc the pointers of MMD0exp, so anybody who needs them can easily read them.
+	bsr.s	relocentr			; annotxt
+	addq.l	#4,a0			; annolen
+	bsr.s	relocentr			; InstrInfo
+	addq.l	#8,a0
+	bsr.s	relocentr			; rgbtable (not useful for most people)
+	addq.l	#4,a0			; skip channelsplit
+	bsr.s	relocentr			; NotationInfo
+	bsr.s	relocentr			; songname
+	addq.l	#4,a0			; skip song name length
+	bsr.s	relocentr			; MIDI dumps
+	bsr.s	.relocmdd
+	subq.b	#1,d4			; songs left..?
+	bcs.s	.rel_ex
+	move.l	d0,a0
+	move.l	(a0),d0
+	beq.s	.rel_ex
+	move.l	d0,a2
+	bsr.s	.relocp
+	movea.l	8(a2),a1
+	bra.s	.rel_lp
+	.rel_ex:
+	movem.l	(sp)+,d2-d4/a2-a4
+	rts
+	.relocp:
+	lea	mmd_songinfo(a2),a0
+	bsr.s	relocentr
+	addq.l	#4,a0
+	bsr.s	relocentr
+	addq.l	#4,a0
+	bsr.s	relocentr
+	addq.l	#4,a0
+	bra.s	relocentr
+	.relocb:
+	move.l	mmd_blockarr(a2),d0
+	beq.s	.xlocb
+	movea.l	d0,a0
+	move.w	msng_numblocks(a1),d0
+	subq.b	#1,d0
+	.rebl:
+	bsr	relocentr
+	dbf	d0,.rebl
+	cmp.b	#'T',3(a2)		; MMD0 (= MCNT)
+	beq.s	.xlocb
+	cmp.b	#'1',3(a2)		; test MMD type
+	bge.s	.relocbi
+	.xlocb:
+	rts
+	.relocmdd:
+	move.l	d0,-(sp)
+	tst.l	-(a0)
+	beq.s	.xlocmdd
+	movea.l	(a0),a0
+	move.w	(a0),d0			; # of msg dumps
+	addq.l	#8,a0
+	.mddloop:
+	beq.s	.xlocmdd
+	bsr	relocentr
+	bsr.s	.relocdmp
+	subq.w	#1,d0
+	bra.s	.mddloop
+	.xlocmdd:
+	move.l	(sp)+,d0
+	rts
+	.relocdmp:
+	move.l	-4(a0),d3
+	beq.s	.xlocdmp			; save
+	exg.l	a0,d3
+	addq.l	#4,a0
+	bsr	relocentr	 		; reloc data pointer
+	move.l	d3,a0			; restore
+	.xlocdmp:
+	rts
+	.relocbi:
+	move.w	msng_numblocks(a1),d0
+	move.l	a0,a3
+	.biloop:
+	subq.w	#1,d0
+	bmi.s	.xlocdmp
+	move.l	-(a3),a0
+	addq.l	#4,a0
+	bsr	relocentr			; BlockInfo ptr
+	tst.l	-(a0)
+	beq.s	.biloop
+	move.l	(a0),a0
+	bsr	relocentr			; hldata
+	bsr	relocentr			; block name
+	addq.l	#4,a0			; skip blocknamelen
+	bsr	relocentr			; pagetable
+	tst.l	-(a0)
+	bne.s	.relocpgtbl
+	bra.s	.biloop
+	.relocmmd2sng:			; take care of the new features of MMD2s
+	move.l	mmd_songinfo(a2),a0
+	lea	msng_pseqs(a0),a0
+	bsr	relocentr			; playseqtable
+	bsr	relocentr			; sectiontable
+	bsr	relocentr			; trackvols
+	move.w	2(a0),d0			; numpseqs
+	move.l	-12(a0),a0		; get back to playseqtable
+	subq.w	#1,d0
+	.psqtblloop:
+	bsr	relocentr
+	dbf	d0,.psqtblloop
+	rts
+	.relocpgtbl:
+	movea.l	(a0),a4			; page table list hdr
+	move.w	(a4),d2
+	subq.w	#1,d2
+	lea	4(a4),a0
+	.pgtblloop:
+	bsr	relocentr
+	dbf	d2,.pgtblloop
+	bra	.biloop
+	RTS
 	ENDC
 
 ; -------- _ChannelOff: Turn off a channel -------------------------------
@@ -464,7 +508,7 @@ pn_nooffsovf:	movea.l	trk_audioaddr(a5),a1	;base of this channel's regs
 		lea	flags-DB(a6),a0
 		btst	#0,0(a0,d4.w)		;test flags.SSFLG_LOOP
 		bne.s	repeat
-		
+		;CLR.W	$100			; DEBUG | w 0 100 2
 		move.l	#_chipzero,trk_sampleptr(a5) ;pointer of zero word
 		move.w	#1,trk_samplelen(a5)	;length: 1 word
 		sub.l	d0,d1
@@ -3328,17 +3372,17 @@ _periodtable:
 	dc.l	per1,per2,per3,per4,per5,per6,per7
 
 	IFND	__G2
-		section "ChipData",data_c	;,chip ;for A68k
+		;section "ChipData",data_c	;,chip ;for A68k
 	ENDC
 	IFD	__G2
-		section "ChipData",data_c	;this is for Devpac 2
+		;section "ChipData",data_c	;this is for Devpac 2
 	ENDC
 		XDEF	_modnum
 	IFNE	EASY
 ;easymod:		INCBIN	"med/octamed_test.med"	;<<<<< MODULE NAME HERE!
 	ENDC
 _chipzero:	dc.l	0
-_modnum:		dc.w	0		;number of module to play
+_modnum:		dc.w	0			;number of module to play
 
 ; macros for entering offsets
 DEFWORD	MACRO

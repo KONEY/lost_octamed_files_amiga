@@ -479,11 +479,16 @@ TEXT:		INCLUDE "textscroller.i"
 		INCLUDE "med/MED_PlayRoutine.i"
 MED_MODULE:	INCLUDE "LOF_NOSMPLS2.i"	;<<<<< MODULE NAME HERE!
 
+; *******************************************************************
 	SECTION "ChipData",DATA_C		;declared data that must be in chipmem
+; *******************************************************************
+
 _SAMPLES:	INCLUDE "SAMPLES.i"	;<<<<< MED SAMPLES IN CHIP RAM!!
 
 TR808:		INCBIN "TR-808.raw"
 TR808_END:	DS.B bpls*8
+
+		DC.L 0,0
 
 SPRT_K:	
 	DC.W $0000,$0080
@@ -608,7 +613,7 @@ COPPER1:
 
 
 ; *******************************************************************
-	SECTION	ChipBuffers,BSS_C	; BSS doesn't count toward exe size
+	SECTION	"ChipBuffers",BSS_C	; BSS doesn't count toward exe size
 ; *******************************************************************
 
 SCREEN1:		DS.B 0		; Define storage for buffer 1

@@ -39,7 +39,7 @@
 	IFNE	EASY
 		XDEF	_startmusic,_endmusic
 
-_startmusic:	
+_startmusic:
 	lea	MED_MODULE,a2
 	bsr.s	_RelocModule
 	bsr.w	_InitPlayer
@@ -56,11 +56,10 @@ reloci:					; ** RELOC SAMPLES **
 	moveq	#0,d0
 	move.b	msng_numsamples(a1),d0	; number of samples
 	subq.b	#1,d0
-	move.l	(a0),d3			; 1rst sample ptr
 	MOVE.L	#_SAMPLES,D7		; NEW POINTER
-	SUB.L	D3,D7			; NEW OFFSET
+	SUB.L	(a0),D7			; NEW OFFSET
 	.relocs:
-	bsr.s	relocSample
+	bsr.s	relocSample		; FOR SAMPLES ONLY
 	move.l	-4(a0),d3		; sample ptr
 	beq.s	.nosyn
 	move.l	d3,a3
@@ -77,7 +76,7 @@ reloci:					; ** RELOC SAMPLES **
 	.xloci:
 	rts
 
-relocSample:	
+relocSample:
 	tst.l	(a0)
 	beq.s	.norel
 	add.l	D7,(a0)+
@@ -86,7 +85,7 @@ relocSample:
 	addq.l	#4,a0
 	rts
 
-relocentr:	
+relocentr:
 	tst.l	(a0)
 	beq.s	.norel
 	add.l	d1,(a0)+
@@ -95,7 +94,7 @@ relocentr:
 	addq.l	#4,a0
 	rts
 
-_RelocModule:	
+_RelocModule:
 	movem.l	a2-a4/d2-d4,-(sp)
 	move.l	a2,d1			; d1 = ptr to start of module
 	bsr.s	.relocp

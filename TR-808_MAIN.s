@@ -611,12 +611,7 @@ COPPER1:
 
 	DC.W $FFFF,$FFFE		; magic value to end copperlist_COPPER1:
 
-
-; *******************************************************************
-	SECTION	"ChipBuffers",BSS_C	; BSS doesn't count toward exe size
-; *******************************************************************
-
-SCREEN1:		DS.B 0		; Define storage for buffer 1
-SCREEN2:		DS.B 0		; two buffers
+SCREEN1:	DC.B 0		; Define storage for buffer 1
+SCREEN2:	DC.B 0		; two buffers
 
 END

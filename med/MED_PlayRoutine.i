@@ -33,7 +33,7 @@
 		INCLUDE	"aura.a"
 	ENDC
 	IFEQ	AURA
-		SECTION	"Code",CODE
+		;SECTION	"Code",CODE
 	ENDC
 
 	IFNE	EASY
@@ -56,7 +56,7 @@ reloci:					; ** RELOC SAMPLES **
 	moveq	#0,d0
 	move.b	msng_numsamples(a1),d0	; number of samples
 	subq.b	#1,d0
-	MOVE.L	#_SAMPLES,D7		; NEW POINTER
+	MOVE.L	#MED_SAMPLES,D7		; NEW POINTER
 	SUB.L	(a0),D7			; NEW OFFSET
 	.relocs:
 	bsr.s	relocSample		; FOR SAMPLES ONLY

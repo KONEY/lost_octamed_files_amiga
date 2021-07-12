@@ -443,52 +443,41 @@ __POINT_SPRITES:			; #### Point LOGO sprites
 	RTS
 
 ;********** Fastmem Data **********
-SPRITE_Y:		DC.W 0		; qui viene memorizzata la Y dello sprite
-SPRITE_X:		DC.W 0		; qui viene memorizzata la X dello sprite
-MOUSE_Y:		DC.B 0		; qui viene memorizzata la Y del mouse
-MOUSE_X:		DC.B 0		; qui viene memorizzata la X del mouse
+SPRITE_Y:		DC.W 0
+SPRITE_X:		DC.W 0
+MOUSE_Y:		DC.B 0
+MOUSE_X:		DC.B 0
 LMBUTTON_STATUS:	DC.W 0
 TEXTINDEX:	DC.W 0
 FRAMESINDEX:	DC.W 3
 COUNTDOWN:	DC.W 0
 SKIP_TRIGGERED:	DC.W 0
-
 SEQ_POS_ON:	DC.B $00,$61,$69,$71,$00,$81,$89,$91,$00,$A1,$A9,$B1,$00,$C1,$C9,$D1
-;SEQ_POS_BIT:	DC.B $00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00,$00
 SEQ_POS_OFF:	DC.B $59,$00,$00,$00,$79,$00,$00,$00,$99,$00,$00,$00,$B9,$00,$00,$00
 SEQ_VPOS_ON:	DC.B $FF,$EF,$EF,$EF,$FF,$EF,$EF,$EF,$FF,$EF,$EF,$EF,$FF,$EF,$EF,$EF
 SEQ_VPOS_OFF:	DC.B $EF,$FF,$FF,$FF,$EF,$FF,$FF,$FF,$EF,$FF,$FF,$FF,$EF,$FF,$FF,$FF
-
 FRAMEINDEX:	DC.W 0
-
 ACTUALSPRITE:	DC.L SPRT_K
-
 KEYBLOCKS:	DC.W 0,15,35,58,105,124,153,178,226,251,291,337,477
-
-;KEYBLOCKS:	DC.W 0,2,40,6,8,10,12,14,16,18
+;KEYBLOCKS:	DC.W 0,251,40,6,8,10,12,14,16,18
 KEYBLOCKS_INDEX:	DC.L 0
 
 DrawBuffer:	DC.L TR808	; pointers to buffers
 ViewBuffer:	DC.L TR808	; to be swapped
-
 FONT:		DC.L 0,0		; SPACE CHAR
 		INCBIN "cosmicalien_font.raw",0
 		EVEN
-
 TEXT:		INCLUDE "textscroller.i"
 		INCLUDE "med/MED_PlayRoutine.i"
 MED_MODULE:	INCLUDE "LOF_NOSMPLS2.i"	;<<<<< MODULE NAME HERE!
-
 ; *******************************************************************
 	SECTION "ChipData",DATA_C		;declared data that must be in chipmem
 ; *******************************************************************
-
-_SAMPLES:	INCLUDE "SAMPLES.i"	;<<<<< MED SAMPLES IN CHIP RAM!!
-
+MED_SAMPLES:	INCLUDE "SAMPLES.i"	;<<<<< MED SAMPLES IN CHIP RAM!!
 TR808:		INCBIN "TR-808.raw"
 TR808_END:	DS.B bpls*8
 
-		DC.L 0,0
+		DC.L 0,0	; DUMMY
 
 SPRT_K:	
 	DC.W $0000,$0080

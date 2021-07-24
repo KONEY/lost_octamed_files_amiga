@@ -56,10 +56,17 @@ reloci:					; ** RELOC SAMPLES **
 	moveq	#0,d0
 	move.b	msng_numsamples(a1),d0	; number of samples
 	subq.b	#1,d0
+	IFNE	SPLIT_RELOCS
 	MOVE.L	#MED_SAMPLES,D7		; NEW POINTER
 	SUB.L	(a0),D7			; NEW OFFSET
+	ENDC
 	.relocs:
+	IFNE	SPLIT_RELOCS
 	bsr.s	relocSample		; FOR SAMPLES ONLY
+	ENDC
+	IFEQ	SPLIT_RELOCS
+	bsr.s	relocentr			; original subroutine
+	ENDC
 	move.l	-4(a0),d3		; sample ptr
 	beq.s	.nosyn
 	move.l	d3,a3
@@ -76,6 +83,7 @@ reloci:					; ** RELOC SAMPLES **
 	.xloci:
 	rts
 
+	IFNE	SPLIT_RELOCS
 relocSample:
 	tst.l	(a0)
 	beq.s	.norel
@@ -84,7 +92,7 @@ relocSample:
 	.norel:
 	addq.l	#4,a0
 	rts
-
+	ENDC
 relocentr:
 	tst.l	(a0)
 	beq.s	.norel

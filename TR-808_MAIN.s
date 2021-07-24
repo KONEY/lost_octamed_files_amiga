@@ -11,6 +11,8 @@ bpls		EQU 5		; handy values:
 bwpl		EQU wd/16*2	; byte-width of 1 bitplane line (46)
 bwid		EQU bpls*bwpl	; byte-width of 1 pixel line (all bpls)
 TXT_FRMSKIP 	EQU 3
+BLOCK_SKIP	EQU 2
+SKIP_IDLE_TIME	EQU 30*6
 ;*************
 ;CLR.W	$100		; DEBUG | w 0 100 2
 ;********** Demo **********	; Demo-specific non-startup code below.
@@ -86,7 +88,7 @@ MainLoop:
 
 	;CLR.W	$100			; DEBUG | w 0 100 2
 	MOVE.L	KEYBLOCKS_INDEX,D3
-	ADD.W	#2,D3
+	ADD.W	#BLOCK_SKIP,D3
 	LEA	KEYBLOCKS,A2
 	MOVE.W	(A2,D3.W),D1
 	MOVE.W	MED_SONG_POS,D2
@@ -94,12 +96,12 @@ MainLoop:
 	BNE.S	.Skip
 
 	MOVE.L	D3,KEYBLOCKS_INDEX	; update index
-	MOVE.W	#30*6,COUNTDOWN
+	MOVE.W	#SKIP_IDLE_TIME,COUNTDOWN
 	MOVE.L	#SPRT_N,ACTUALSPRITE	; sprite 0
 	BSR.W	__POINT_SPRITES		; #### Point sprites
 	LEA	SPRT_A\.DATA,A4		; PARS
 	BSR.W	__POPULATESPRITE
-	MOVE.W	#$F0F,$DFF180		; show rastertime left down to $12c
+	;MOVE.W	#$F0F,$DFF180		; show rastertime left down to $12c
 	.Skip:
 
 	TST.W	COUNTDOWN
@@ -121,7 +123,7 @@ MainLoop:
 
 	BSR.W	__POINT_SPRITES	; #### Point sprites
 	MOVE.L	KEYBLOCKS_INDEX,D3
-	ADD.W	#2,D3
+	ADD.W	#BLOCK_SKIP,D3
 	LEA	SPRT_N\.DATA,A4	; PARS
 	BSR.W	__POPULATESPRITE
 	.dontReset:
@@ -136,16 +138,18 @@ MainLoop:
 	;*--- main loop end ---*
 	; # CODE FOR BUTTON PRESS ##
 	TST.W	COUNTDOWN
-	BNE.S	.DontShowRasterTime
+	BNE.S	.SkipButtonActions
 	BTST	#6,$BFE001
-	BNE.S	.DontShowRasterTime
+	BNE.S	.SkipButtonActions
 	TST.W	LMBUTTON_STATUS
-	BNE.S	.DontShowRasterTime
+	BNE.S	.SkipButtonActions
 	MOVE.W	#1,LMBUTTON_STATUS
-	MOVE.W	#$F00,$DFF180	; show rastertime left down to $12c
+	;MOVE.W	#$F00,$DFF180	; show rastertime left down to $12c
 	; ## SONG POSITION ##
 	MOVE.L	KEYBLOCKS_INDEX,D3
-	ADD.W	#2,D3
+	CMPI.L	#14*2,D3		; CHECK IF ITS LAST SONG
+	BGE.S	.SkipButtonActions	; SKIP MORE SKIPS :)
+	ADD.W	#BLOCK_SKIP,D3
 	LEA	KEYBLOCKS,A2
 	MOVE.W	(A2,D3.W),MED_SONG_POS
 	; ## SONG POSITION ##
@@ -155,7 +159,7 @@ MainLoop:
 	LEA	SPRT_N\.DATA,A4	; PARS
 	BSR.W	__POPULATESPRITE
 
-	.DontShowRasterTime:
+	.SkipButtonActions:
 	BTST	#6,$BFE001
 	BEQ.S	.DontResetStatus
 	MOVE.W	#0,LMBUTTON_STATUS
@@ -458,8 +462,8 @@ SEQ_VPOS_ON:	DC.B $FF,$EF,$EF,$EF,$FF,$EF,$EF,$EF,$FF,$EF,$EF,$EF,$FF,$EF,$EF,$E
 SEQ_VPOS_OFF:	DC.B $EF,$FF,$FF,$FF,$EF,$FF,$FF,$FF,$EF,$FF,$FF,$FF,$EF,$FF,$FF,$FF
 FRAMEINDEX:	DC.W 0
 ACTUALSPRITE:	DC.L SPRT_K
-KEYBLOCKS:	DC.W 0,15,35,58,105,124,153,178,226,251,291,337,477
-;KEYBLOCKS:	DC.W 0,251,40,6,8,10,12,14,16,18
+KEYBLOCKS:	DC.W 0,15,37,58,105,124,153,178,226,251,291,337,380,412,445,0
+;KEYBLOCKS:	DC.W 0,153,178,226,251,291,337,6,8,10,12,14,16,18
 KEYBLOCKS_INDEX:	DC.L 0
 
 DrawBuffer:	DC.L TR808	; pointers to buffers
@@ -469,11 +473,15 @@ FONT:		DC.L 0,0		; SPACE CHAR
 		EVEN
 TEXT:		INCLUDE "textscroller.i"
 		INCLUDE "med/MED_PlayRoutine.i"
-MED_MODULE:	INCLUDE "LOF_NOSMPLS2.i"	;<<<<< MODULE NAME HERE!
+
 ; *******************************************************************
 	SECTION "ChipData",DATA_C		;declared data that must be in chipmem
 ; *******************************************************************
-MED_SAMPLES:	INCLUDE "SAMPLES.i"	;<<<<< MED SAMPLES IN CHIP RAM!!
+MED_MODULE:	INCLUDE "LOST_OCTAMED_FILES_1_NOSMPLS.i"	;<<<<< MODULE NAME HERE!
+MED_SAMPLES:	INCLUDE "LOST_OCTAMED_FILES_1_SAMPLES.i"	;<<<<< MED SAMPLES IN CHIP RAM!!
+
+;MED_MODULE:	INCBIN "med/LOST_OCTAMED_FILES_1.MED"
+
 TR808:		INCBIN "TR-808.raw"
 TR808_END:	DS.B bpls*8
 

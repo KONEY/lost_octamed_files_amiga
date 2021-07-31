@@ -473,11 +473,12 @@ FONT:		DC.L 0,0		; SPACE CHAR
 		EVEN
 TEXT:		INCLUDE "textscroller.i"
 		INCLUDE "med/MED_PlayRoutine.i"
-
+MED_MODULE:	INCLUDE "LOST_OCTAMED_FILES_1_NOSMPLS.i"	;<<<<< MODULE NAME HERE!
 ; *******************************************************************
 	SECTION "ChipData",DATA_C		;declared data that must be in chipmem
 ; *******************************************************************
-MED_MODULE:	INCLUDE "LOST_OCTAMED_FILES_1_NOSMPLS.i"	;<<<<< MODULE NAME HERE!
+	INCBIN "TR-808.raw"	; 52KB FREE!!
+
 MED_SAMPLES:	INCLUDE "LOST_OCTAMED_FILES_1_SAMPLES.i"	;<<<<< MED SAMPLES IN CHIP RAM!!
 
 ;MED_MODULE:	INCBIN "med/LOST_OCTAMED_FILES_1.MED"

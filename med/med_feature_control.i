@@ -46,7 +46,7 @@ EASY		EQU	1
 ; #### KONEY ####
 SAMPLES_TRACKING	EQU	0	; Tracks samples#, notes etc TBD
 START_POS	EQU	0	; After SEQ 0 jump to #
-SPLIT_RELOCS	EQU	0	; If 1 samples will be expected to be separated from song data, 
+SPLIT_RELOCS	EQU	1	; If 1 samples will be expected to be separated from song data, 
 				; at label "MED_SAMPLES:" so all the rest can be in fast ram
 ; #### KONEY ####
 

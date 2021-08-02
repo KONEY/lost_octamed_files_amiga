@@ -70,7 +70,7 @@ MainLoop:
 	bsr.w	PokePtrs
 	;*--- ...draw into the other(a2) ---*
 	move.l	a2,a1
-	MOVE.L	#TR808,DrawBuffer
+	;MOVE.L	#TR808,DrawBuffer
 	; do stuff here :)
 	BSR.W	__SET_SEQUENCER_LEDS
 	BSR.W	__FILLANDSCROLLTXT
@@ -462,7 +462,7 @@ SEQ_VPOS_ON:	DC.B $FF,$EF,$EF,$EF,$FF,$EF,$EF,$EF,$FF,$EF,$EF,$EF,$FF,$EF,$EF,$E
 SEQ_VPOS_OFF:	DC.B $EF,$FF,$FF,$FF,$EF,$FF,$FF,$FF,$EF,$FF,$FF,$FF,$EF,$FF,$FF,$FF
 FRAMEINDEX:	DC.W 0
 ACTUALSPRITE:	DC.L SPRT_K
-KEYBLOCKS:	DC.W 0,15,37,58,105,124,153,178,226,251,291,337,380,412,445,0
+KEYBLOCKS:	DC.W 0,15,37,58,105,124,153,178,226,251,291,337,380,412,444,0
 ;KEYBLOCKS:	DC.W 0,153,178,226,251,291,337,6,8,10,12,14,16,18
 KEYBLOCKS_INDEX:	DC.L 0
 
@@ -473,19 +473,18 @@ FONT:		DC.L 0,0		; SPACE CHAR
 		EVEN
 TEXT:		INCLUDE "textscroller.i"
 		INCLUDE "med/MED_PlayRoutine.i"
-MED_MODULE:	INCLUDE "LOST_OCTAMED_FILES_1_NOSMPLS.i"	;<<<<< MODULE NAME HERE!
+MED_MODULE:	INCLUDE "SCORE.i"	;<<<<< MODULE NAME HERE!
 ; *******************************************************************
 	SECTION "ChipData",DATA_C		;declared data that must be in chipmem
 ; *******************************************************************
-	INCBIN "TR-808.raw"	; 52KB FREE!!
 
-MED_SAMPLES:	INCLUDE "LOST_OCTAMED_FILES_1_SAMPLES.i"	;<<<<< MED SAMPLES IN CHIP RAM!!
+MED_SAMPLES:	INCLUDE "SAMPLES.i"	;<<<<< MED SAMPLES IN CHIP RAM!!
 
-;MED_MODULE:	INCBIN "med/LOST_OCTAMED_FILES_1.MED"
-
+;MED_MODULE:	INCBIN "LOST_OCTAMED_FILES_1_APPENDED.MED"
+		DC.L 0,0	; DUMMY
 TR808:		INCBIN "TR-808.raw"
 TR808_END:	DS.B bpls*8
-
+		DC.L 0,0	; DUMMY
 		DC.L 0,0	; DUMMY
 
 SPRT_K:	

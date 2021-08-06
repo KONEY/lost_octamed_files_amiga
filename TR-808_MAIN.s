@@ -473,7 +473,9 @@ FONT:		DC.L 0,0		; SPACE CHAR
 		EVEN
 TEXT:		INCLUDE "textscroller.i"
 		INCLUDE "med/MED_PlayRoutine.i"
+		dcb.l	8,0
 MED_MODULE:	INCLUDE "SCORE.i"	;<<<<< MODULE NAME HERE!
+		dcb.l	8,0
 ; *******************************************************************
 	SECTION "ChipData",DATA_C		;declared data that must be in chipmem
 ; *******************************************************************

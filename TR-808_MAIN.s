@@ -481,7 +481,7 @@ MED_MODULE:	INCLUDE "SCORE.i"	;<<<<< MODULE NAME HERE!
 ; *******************************************************************
 
 MED_SAMPLES:	INCLUDE "SAMPLES.i"	;<<<<< MED SAMPLES IN CHIP RAM!!
-
+_chipzero:	dc.l	0
 ;MED_MODULE:	INCBIN "LOST_OCTAMED_FILES_1_APPENDED.MED"
 		DC.L 0,0	; DUMMY
 TR808:		INCBIN "TR-808.raw"

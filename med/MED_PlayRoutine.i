@@ -3388,7 +3388,7 @@ _periodtable:
 	IFNE	EASY
 ;easymod:		INCBIN	"med/octamed_test.med"	;<<<<< MODULE NAME HERE!
 	ENDC
-_chipzero:	dc.l	0
+;_chipzero:	dc.l	0			; move this to chip ram after SAPLES!
 _modnum:		dc.w	0			;number of module to play
 
 ; macros for entering offsets

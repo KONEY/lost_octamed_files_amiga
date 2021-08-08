@@ -495,7 +495,11 @@ _chipzero:	DC.L	0
 	ENDC
 ;MED_MODULE:	INCBIN "LOST_OCTAMED_FILES_1_APPENDED.MED"
 		DC.L 0,0	; DUMMY
-TR808:		INCBIN "TR-808.raw"
+TR808:		DCB.B bwpl*hg,$0000	;INCBIN "TR-808.raw"
+		DCB.B bwpl*hg,$0000	;INCBIN "TR-808.raw"
+		DCB.B bwpl*hg,$AAAA	;INCBIN "TR-808.raw"
+		DCB.B bwpl*hg,$0000	;INCBIN "TR-808.raw"
+		DCB.B bwpl*hg,$0000	;INCBIN "TR-808.raw"
 TR808_END:	DS.B bpls*8
 		DC.L 0,0	; DUMMY
 		DC.L 0,0	; DUMMY

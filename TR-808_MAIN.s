@@ -44,6 +44,12 @@ Demo:				; a4=VBR, a6=Custom Registers Base addr
 	MOVE.L	#2,D3		; PARAMETERS
 	LEA	SPRT_N\.DATA,A4	; PARS
 	BSR.W	__POPULATESPRITE
+	MOVE.L	#24,D3		; PARAMETERS
+	LEA	SPRT_M\.DATA,A4	; PARS
+	BSR.W	__POPULATESPRITE
+	MOVE.L	#24,D3		; PARAMETERS
+	LEA	SPRT_S\.DATA,A4	; PARS
+	BSR.W	__POPULATESPRITE
 	BSR.W	__POINT_SPRITES	; #### Point sprites
 	; #### CPU INTENSIVE TASKS BEFORE STARTING MUSIC
 
@@ -396,9 +402,9 @@ __POPULATESPRITE:
 	RTS
 
 __POINT_SPRITES:			; #### Point LOGO sprites
-	LEA	Copper1\.SpritePointers,A1	; Puntatori in copperlist
+	LEA	COPPER1\.SpritePointers,A1	; Puntatori in copperlist
 
-	MOVE.L	#0,D0		; sprite 0
+	MOVE.L	#SPRT_M,D0	; sprite 0
 	MOVE.W	D0,6(A1)
 	SWAP	D0
 	MOVE.W	D0,2(A1)
@@ -410,25 +416,25 @@ __POINT_SPRITES:			; #### Point LOGO sprites
 	MOVE.W	D0,2(A1)
 
 	ADDQ.W	#8,A1
-	MOVE.L	#LED_OFF,D0	; sprite 5
+	MOVE.L	#LED_OFF,D0	; sprite 2
 	MOVE.W	D0,6(A1)
 	SWAP	D0
 	MOVE.W	D0,2(A1)
 
 	ADDQ.W	#8,A1
-	MOVE.L	#LED_ON,D0	; sprite 4
+	MOVE.L	#LED_ON,D0	; sprite 3
 	MOVE.W	D0,6(A1)
 	SWAP	D0
 	MOVE.W	D0,2(A1)
 
 	ADDQ.W	#8,A1
-	MOVE.L	#0,D0		; sprite 2
+	MOVE.L	#SPRT_S,D0	; sprite 4
 	MOVE.W	D0,6(A1)
 	SWAP	D0
 	MOVE.W	D0,2(A1)
 
 	ADDQ.W	#8,A1
-	MOVE.L	#0,D0		; sprite 3
+	MOVE.L	#0,D0		; sprite 5
 	MOVE.W	D0,6(A1)
 	SWAP	D0
 	MOVE.W	D0,2(A1)
@@ -444,6 +450,7 @@ __POINT_SPRITES:			; #### Point LOGO sprites
 	MOVE.W	D0,6(A1)
 	SWAP	D0
 	MOVE.W	D0,2(A1)
+
 	RTS
 
 ;********** Fastmem Data **********
@@ -463,6 +470,8 @@ SEQ_VPOS_OFF:	DC.B $EF,$FF,$FF,$FF,$EF,$FF,$FF,$FF,$EF,$FF,$FF,$FF,$EF,$FF,$FF,$
 FRAMEINDEX:	DC.W 0
 ACTUALSPRITE:	DC.L SPRT_K
 KEYBLOCKS:	DC.W 0,15,37,58,105,124,153,178,226,251,291,337,380,412,444,0
+KB_SECS:		DC.W 52,8,24,5,58,7,46,37,13,37,11,55,51,54
+KB_MINS:		DC.W 0,2,3,6,6,9,10,13,15,17,20,22,24,26
 ;KEYBLOCKS:	DC.W 0,153,178,226,251,291,337,6,8,10,12,14,16,18
 KEYBLOCKS_INDEX:	DC.L 0
 
@@ -481,7 +490,9 @@ MED_MODULE:	INCLUDE "SCORE.i"	;<<<<< MODULE NAME HERE!
 ; *******************************************************************
 
 MED_SAMPLES:	INCLUDE "SAMPLES.i"	;<<<<< MED SAMPLES IN CHIP RAM!!
-_chipzero:	dc.l	0
+	IFNE	SPLIT_RELOCS
+_chipzero:	DC.L	0
+	ENDC
 ;MED_MODULE:	INCBIN "LOST_OCTAMED_FILES_1_APPENDED.MED"
 		DC.L 0,0	; DUMMY
 TR808:		INCBIN "TR-808.raw"
@@ -496,7 +507,8 @@ SPRT_K:
 	DC.W $FF80,$FF80,$FF80,$FF80,$FF80,$FF80
 	DC.W $FC70,$FC70,$FC70,$FC70,$FC70,$FC70
 	DC.W $FC0E,$FC0E,$FC0E,$FC0E,$FC0E,$FC0E
-	DC.W 0,0	; 2 word azzerate definiscono la fine dello sprite.
+	DC.L 0	; 2 word azzerate definiscono la fine dello sprite.
+	DC.L 0	; DUMMY
 
 SPRT_A:	
 	DC.W $0000,$0080
@@ -506,7 +518,7 @@ SPRT_A:
 	DC.W $0000,$0000,$0000,$0000,$0000,$0000
 	DC.W $0000,$0000,$0000,$0000,$0000,$0000
 	DC.W $0000,$0000,$0000,$0000,$0000,$0000
-	DC.W 0,0	; 2 word azzerate definiscono la fine dello sprite.
+	DC.L 0	; 2 word azzerate definiscono la fine dello sprite.
 	DC.L 0	; DUMMY
 
 SPRT_N:	
@@ -517,7 +529,39 @@ SPRT_N:
 	DC.W $0000,$0000,$0000,$0000,$0000,$0000
 	DC.W $0000,$0000,$0000,$0000,$0000,$0000
 	DC.W $0000,$0000,$0000,$0000,$0000,$0000
-	DC.W 0,0	; 2 word azzerate definiscono la fine dello sprite.
+	DC.L 0	; 2 word azzerate definiscono la fine dello sprite.
+	DC.L 0	; DUMMY
+
+SPRT_M:	
+	DC.B $38,$40,$4E,$48
+	.DATA:
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.L 0	; 2 word azzerate definiscono la fine dello sprite.
+	DC.L 0	; DUMMY
+
+SPRT_S:	
+	DC.B $38,$46,$4E,$48
+	.DATA:
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.W $0000,$0000,$0000,$0000,$0000,$0000
+	DC.L 0	; 2 word azzerate definiscono la fine dello sprite.
 	DC.L 0	; DUMMY
 
 LED_ON:
@@ -529,18 +573,18 @@ LED_ON:
 	.CTRL:
 	DC.B $00
 	DC.W $E000,$E000,$E000,$E000,$E000,$E000
-	DC.W 0,0	; 2 word azzerate definiscono la fine dello sprite.
+	DC.L 0	; 2 word azzerate definiscono la fine dello sprite.
 
 LED_OFF:	
 	.VPOS:
 	DC.B $EF	; Posizione verticale di inizio sprite (da $2c a $f2)
 	.HPOS:
-	DC.B $49	; Posizione orizzontale di inizio sprite (da $40 a $d8)
+	DC.B $47	; Posizione orizzontale di inizio sprite (da $40 a $d8)
 	DC.B $F2	; $50+13=$5d	; posizione verticale di fine sprite
 	.CTRL:
 	DC.B $00
 	DC.W $E000,$0000,$E000,$0000,$E000,$0000
-	DC.W 0,0	; 2 word azzerate definiscono la fine dello sprite.
+	DC.L 0	; 2 word azzerate definiscono la fine dello sprite.
 
 COPPER1:
 	DC.W $1FC,0		; Slow fetch mode, remove if AGA demo.
@@ -569,16 +613,6 @@ COPPER1:
 	DC.W $F4,0
 	DC.W $F6,0	; full 6 ptrs, in case you increase bpls
 
-	.SpritePointers:
-	DC.W $120,0,$122,0 ; 0
-	DC.W $124,0,$126,0 ; 1
-	DC.W $128,0,$12A,0 ; 2
-	DC.W $12C,0,$12E,0 ; 3
-	DC.W $130,0,$132,0 ; 4
-	DC.W $134,0,$136,0 ; 5
-	DC.W $138,0,$13A,0 ; 6
-	DC.W $13C,0,$13E,0 ; 7
-
 	.Palette:
 	DC.W $0180,$0000,$0182,$0444,$0184,$0BBB,$0186,$0333
 	DC.W $0188,$0222,$018A,$0667,$018C,$0556,$018E,$0FFF
@@ -589,9 +623,21 @@ COPPER1:
 	DC.W $01B0,$0990,$01B2,$099A,$01B4,$0961,$01B6,$0A71
 	DC.W $01B8,$0E81,$01BA,$0B40,$01BC,$0943,$01BE,$0EEF
 
-	.Waits:
-	; SEQ_LEDs
-	;DC.W $EF01,$FF00			; horizontal position masked off
+	.SpritePointers:
+	DC.W $120,0,$122,0 ; 0
+	DC.W $124,0,$126,0 ; 1
+	DC.W $128,0,$12A,0 ; 2
+	DC.W $12C,0,$12E,0 ; 3
+	DC.W $130,0,$132,0 ; 4
+	DC.W $134,0,$136,0 ; 5
+	DC.W $138,0,$13A,0 ; 6
+	DC.W $13C,0,$13E,0 ; 7
+
+	;.Waits:
+	;DC.W $E001,$FF00			; horizontal position masked off
+	;.SpritePointers2:
+	;DC.W $128,0,$12A,0 ; 2
+	;DC.W $12C,0,$12E,0 ; 3
 	;DC.W $0174,$E000,$0176,$E000	; SPR6DATA
 	;DC.W $017C,$0000,$017E,$E000	; SPR7DATA
 	;DC.W $F201,$FF00

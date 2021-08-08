@@ -3386,10 +3386,12 @@ _periodtable:
 	ENDC
 		XDEF	_modnum
 	IFNE	EASY
-;easymod:		INCBIN	"med/octamed_test.med"	;<<<<< MODULE NAME HERE!
+	;easymod:		INCBIN	"med/octamed_test.med"	;<<<<< MODULE NAME HERE!
 	ENDC
-;_chipzero:	dc.l	0			; move this to chip ram after SAPLES!
-_modnum:		dc.w	0			;number of module to play
+	IFEQ	SPLIT_RELOCS
+_chipzero:	dc.l	0	; move this to chip ram after SAMPLES!
+	ENDC
+_modnum:		dc.w	0	; number of module to play
 
 ; macros for entering offsets
 DEFWORD	MACRO

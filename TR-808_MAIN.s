@@ -565,8 +565,9 @@ MED_MODULE:	INCLUDE "SCORE.i"	;<<<<< MODULE NAME HERE!
 ; *******************************************************************
 
 MED_SAMPLES:	INCLUDE "SAMPLES.i"	;<<<<< MED SAMPLES IN CHIP RAM!!
+
 	IFNE	SPLIT_RELOCS
-_chipzero:	DC.L	0
+_chipzero:	DC.L 0
 	ENDC
 ;MED_MODULE:	INCBIN "LOST_OCTAMED_FILES_1_APPENDED.MED"
 		DC.L 0,0	; DUMMY
